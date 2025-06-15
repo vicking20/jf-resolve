@@ -24,6 +24,7 @@ def save_json_file(path, data):
 
 def get_exclude_ids():
     data = load_json_file(EXCLUDE_FILE)
+    #i added this because the code kept scraping one piece, it has so many episodes, and it takes a lot of time resolving them, also ends up maxing out my rd downloads
     # Expecting a dictionary like: { "tv": [37854, 12345], "movie": [54321], ... }
     # Normalize keys to string for easy comparison
     return {k: set(map(str, v)) for k, v in data.items()}
@@ -94,7 +95,6 @@ def get_discover_ids():
                     if key in requested_cache:
                         print(f"Skipping already requested {media_type} ID {media_id}")
                         continue
-                    # Otherwise add (keep mediaId as integer for API request)
                     page_items.append({
                         "mediaType": media_type,
                         "mediaId": media_id  # Keep as integer for API
