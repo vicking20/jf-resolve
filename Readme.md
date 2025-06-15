@@ -31,7 +31,7 @@ Movies are sorted to movies, tv series are sorted and updated also updated along
 
 Media quality depends on your default resolution set in jellyseerr, if you set 1080p as default, then jellyseerr will request 1080p media files, you can probably change that in jellyseerr settings anytime you wish, especially if file sizes are too large, Ive had some 1080p movies be as large as 16gb in size... For local media, transcodding would be very useful here since it can help greatly reduce file sizes, Im not sure jf-resolve will ever be able to fix that.
 
-In addition, if you arent using jellyfin themes, like me, they break everything on my tv for some reason, there is a customcss file in the project folder where you can copy the code and add as custom css, it can help beautify your homepage a bit, You can also setup backdrop image to be displayed too. That should help with the ui.
+In addition, if you arent using jellyfin themes, but want to customize your web client, you can check this out https://github.com/lscambo13/ElegantFin/releases
 
 All credit goes to the owners of the original project, all teams in charge of jellyfin, jellyseerr, radarr, sonarr, prowlarr... without them, it wont be possible, in a former version of this, I wrote each module myself, and i promise that it is extremly difficult to hunt for the right torrents especially for tvseries.. or im just bad at coding.
 I also give credit to automation avenue as his arr compose file was what i used for this, his youtube video was good for setting the ball rolling.
