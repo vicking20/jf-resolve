@@ -1,0 +1,6 @@
+watchdog
+requests
+python-dotenv
+bencodepy
+tzlocal
+pyyaml

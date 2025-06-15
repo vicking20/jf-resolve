@@ -1,0 +1,75 @@
+services:
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    hostname: prowlarr
+    volumes:
+      - ${ARRPATH}/prowlarr/config:/config
+      - ${ARRPATH}/prowlarr/backup:/data/backup
+      - ${ARRPATH}/downloads:/downloads
+      - ${ARRPATH}/prowlarr/blackhole:/blackhole
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    env_file:
+      - '.env'
+
+  sonarr:
+    image: linuxserver/sonarr:latest
+    container_name: sonarr
+    hostname: sonarr
+    volumes:
+      - ${ARRPATH}/sonarr/config:/config
+      - ${ARRPATH}/sonarr/backup:/data/backup
+      - ${ARRPATH}/sonarr/tvshows:/data/tvshows
+      - ${ARRPATH}/downloads:/downloads
+      - ${ARRPATH}/sonarr/blackhole:/data/blackhole
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+    env_file:
+      - '.env'
+
+  radarr:
+    image: linuxserver/radarr:latest
+    container_name: radarr
+    hostname: radarr
+    volumes:
+      - ${ARRPATH}/radarr/config:/config
+      - ${ARRPATH}/radarr/movies:/data/movies
+      - ${ARRPATH}/radarr/backup:/data/backup
+      - ${ARRPATH}/downloads:/downloads
+      - ${ARRPATH}/radarr/blackhole:/data/blackhole
+    ports:
+      - 7878:7878
+    restart: unless-stopped
+    env_file:
+      - '.env'
+
+  jellyfin:
+    image: linuxserver/jellyfin
+    container_name: jellyfin
+    ports:
+      - '8096:8096/tcp'
+      - '7359:7359/udp'
+      - '1900:1900/udp'
+    volumes:
+      - ${ARRPATH}/jellyfin/config:/config
+      - ${ARRPATH}/radarr/movies:/data/movies
+      - ${ARRPATH}/sonarr/tvshows:/data/tvshows
+      - ${ARRPATH}/lidarr/music:/data/music
+      - ${ARRPATH}/readarr/books:/data/books
+      - ${ARRPATH}/jellyfin/crawl:/data/crawl
+    env_file:
+      - '.env'
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    hostname: jellyseerr
+    ports:
+      - 5055:5055
+    volumes:
+      - ${ARRPATH}/jellyseerr/config:/app/config
+    restart: unless-stopped
