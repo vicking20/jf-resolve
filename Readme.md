@@ -39,14 +39,14 @@ I also give credit to automation avenue as his arr compose file was what i used 
 To setup jf-resolve, clone/download the project, go to the folder and run installer.py, it should do most of the setup for you from the ground up and run the controller.
 If not, you can follow a manual setup below
 
-##manual setup
--> open the .env file and update the path where you want to set things up, this is the folder where all media and container volumes will be mapped to
+##manual setup (not needed if you are running with installer.py)
+-> open the example.env file and update the path where you want to set things up, this is the folder where all media and container volumes will be mapped to, rename this file to .env when completed
 -> go to real-debrid, get your api key and paste into the line for the real debrid api key
 -> check the compose file and see if you need to modify to your liking, if not, run the docker compose up -d command and get your setup running
 -> the path you have setup, for linux and macs, you may need to change owner as they may be created with the root user as owner, then the containers cant access the volume binds, one fix is to manually create the folders as structured in the env file, then docker wont recreate them, if not, you can run the chown command to change owner from root to your user id and group id.
 -> after bringing the containers up, configure your stack tools individually, some instruction on how to do it can be found in the instructions.txt file in this project. after completing step6, you can now paste the api key for your jellyseerr instance into the .env file where the line for jellyseerr api key is, then save and close your env file.
--> open the config.ini file and configure as desired, there are hints to what some of the options do, save and close when done.
--> in your terminal, run "python(3) controller.py --initiate" and you should be set.
+-> open the example.config.ini file and configure as desired, there are hints to what some of the options do, save as config.ini and close when done.
+-> in your terminal, run "python controller.py --initiate" and you should be set, for linux/unix, you can add nohup before running your command if you want it in the background.
 
 This is all for educational purposes... I was testing to see if you could programmatically make jellyfin play media that does not exist locally on your machine and complicate the process by adding a debrid service and also tying it in with the common arr stack. It was fun, I think its okay, and others can modify to their liking or use for educational purposes too. Jf-resole was really made for linux machines, I do not promise that this will work fine on other platforms, precisely windows, but its worth a try. Im not able to test it for errors too, and it probably has a couple of those, if and when I can, I can check those out and fix the errors.
 

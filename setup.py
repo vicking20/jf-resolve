@@ -72,6 +72,7 @@ def update_config_ini():
     config = configparser.ConfigParser()
     if not os.path.exists(config_file):
         print(f"{config_file} not found, creating with default values...")
+        # Create Settings section
         config["Settings"] = {
             "use_custom_structure": "false",
             "use_jellyseerr": "true",
@@ -91,6 +92,10 @@ def update_config_ini():
             config.write(f)
     else:
         config.read(config_file)
+        # Ensure Settings section exists if reading existing file
+        if "Settings" not in config:
+            config["Settings"] = {}
+    
     print("\n Do you want to use a custom folder structure? (Advanced users only!)")
     print("Default is 'false' (Recommended)")
     use_custom = input("Use custom structure? [false/true]: ").strip().lower()
@@ -100,6 +105,7 @@ def update_config_ini():
     if use_custom == "":
         use_custom = "false"
     config["Settings"]["use_custom_structure"] = use_custom
+    
     arr_path = "./media"
     if os.path.exists(".env"):
         with open(".env") as envf:
@@ -108,6 +114,7 @@ def update_config_ini():
                     arr_path = line.strip().split("=", 1)[1]
                     break
     arr_path = arr_path.rstrip("/\\")
+    
     if use_custom == "false":
         config["Settings"]["radarr_blackhole_path"] = os.path.join(arr_path, "radarr/blackhole").replace("\\", "/")
         config["Settings"]["sonarr_blackhole_path"] = os.path.join(arr_path, "sonarr/blackhole").replace("\\", "/")
@@ -126,6 +133,7 @@ def update_config_ini():
         config["Settings"]["jellyfin_crawl_path"] = ask_path("jellyfin_crawl_path", config["Settings"].get("jellyfin_crawl_path", ""))
         config["Settings"]["jellyfin_movie_path"] = ask_path("jellyfin_movie_path", config["Settings"].get("jellyfin_movie_path", ""))
         config["Settings"]["jellyfin_tv_shows_path"] = ask_path("jellyfin_tv_shows_path", config["Settings"].get("jellyfin_tv_shows_path", ""))
+    
     def ask_bool(prompt, default="true"):
         resp = input(f"{prompt} [{default}]: ").strip().lower()
         if resp in ("true", "t", "yes", "y"):
@@ -137,8 +145,11 @@ def update_config_ini():
         else:
             print("Invalid input, defaulting to", default)
             return default
+    
+    config["Settings"]["use_jellyseerr"] = ask_bool("Use Jellyseerr for automatic media requests? (true/false)", config["Settings"].get("use_jellyseerr", "true"))
     config["Settings"]["trending"] = ask_bool("Scrape trending? (true/false)", config["Settings"].get("trending", "true"))
     config["Settings"]["popular_movies"] = ask_bool("Scrape popular movies? (true/false)", config["Settings"].get("popular_movies", "true"))
+    
     while True:
         print("Aggresiveness determines how many potential titles are provided from jellyseerr to update your jellyfin library. Maximum should be 500 as each increment of 1 provides potentially 40 title returns")
         aggr = input(f"Aggressiveness (integer, default {config['Settings'].get('aggresiveness','2')}): ").strip()
@@ -148,6 +159,7 @@ def update_config_ini():
             config["Settings"]["aggresiveness"] = aggr
             break
         print("Please enter a valid integer.")
+    
     #configure jellyseerr
     print("\n--- Jellyseerr URL Configuration ---")
     print("Let's set the base URL used to connect to Jellyseerr.")
@@ -174,6 +186,7 @@ def update_config_ini():
         else:
             custom_port = default_port
         config["Settings"]["jellyseerr_url"] = f"http://{ip_address}:{custom_port}"
+    
     with open(config_file, "w") as f:
         config.write(f)
     print("\nConfiguration saved to config.ini.\n")
@@ -183,14 +196,18 @@ def set_configurations():
     config_file = "config.ini"
     missing = []
     if not os.path.exists(env_file):
-        missing.append(env_file)
+        print(f"'{env_file}' not found. Creating a new one...")
+        with open(env_file, "w") as f:
+            f.write("# Environment Configuration\n")
+        print(f"Created {env_file}")
     if not os.path.exists(config_file):
-        missing.append(config_file)
-    if missing:
-        for file in missing:
-            error_not_found(file)
-        return False
-    print("Confguration files found, Continuing...")
+        print(f"'{config_file}' not found. Creating a new one...")
+        # Create with Settings section
+        with open(config_file, "w") as f:
+            f.write("[Settings]\n")
+        print(f"Created {config_file}")
+    print("Configuration files found (or created), Continuing...")
+    
     with open(env_file, "r") as f:
         lines = f.readlines()
     arrpath_line_index = None
@@ -198,6 +215,7 @@ def set_configurations():
         if line.strip().startswith("ARRPATH="):
             arrpath_line_index = i
             break
+    
     cwd = os.getcwd()
     default_media_path = os.path.join(cwd, "media")
     default_media_path_str = default_media_path.replace("\\", "\\\\") if os.name == "nt" else default_media_path
@@ -215,13 +233,16 @@ def set_configurations():
         env_path = default_media_path.replace("\\", "/")
     else:
         env_path = user_input
+    
     new_line = f"ARRPATH={env_path}\n"
     if arrpath_line_index is not None:
         lines[arrpath_line_index] = new_line
     else:
         lines.append(new_line)
+    
     with open(env_file, "w") as f:
         f.writelines(lines)
+    
     media_folder_path = env_path if os.path.isabs(env_path) else os.path.join(cwd, env_path)
     if not os.path.exists(media_folder_path):
         os.makedirs(media_folder_path)
@@ -229,6 +250,7 @@ def set_configurations():
     else:
         print(f"Media folder already exists at: {media_folder_path}")
     print("ARRPATH set successfully in .env file.")
+    
     try:
         configure_user_ids_and_timezone()
     except Exception as e:
@@ -249,7 +271,7 @@ def try_run_docker_compose():
     except subprocess.CalledProcessError:
         print("Docker compose failed. This might happen if:")
         print(" - Docker is not installed or not running")
-        print(" - You’re not in the docker group (Linux)")
+        print(" - You're not in the docker group (Linux)")
         print(" - You need admin rights (Windows/macOS)")
         print("\nOr may need to run manually with sudo:")
         print("   sudo docker compose up -d")
@@ -266,13 +288,18 @@ def load_docker():
     arr_path = os.path.abspath(os.path.expanduser(arr_path))
     arr_path = arr_path.rstrip("/\\")
     print(f"Base volume path (ARRPATH): {arr_path}")
+    
     compose_file = "compose.yml"
     if not os.path.exists(compose_file):
         print("compose.yml not found.")
         return
+    
     with open(compose_file, "r") as f:
         compose_data = yaml.safe_load(f)
+    
     folders_to_create = set()
+    files_to_create = set()
+    
     for service in compose_data.get("services", {}).values():
         volumes = service.get("volumes", [])
         for vol in volumes:
@@ -280,10 +307,35 @@ def load_docker():
             if "${ARRPATH}" in host_path:
                 rel_path = host_path.replace("${ARRPATH}", "").lstrip("/")
                 full_path = os.path.join(arr_path, rel_path)
-                folders_to_create.add(full_path)
+                
+                # Check if this should be a file (has extension like .html)
+                if os.path.splitext(full_path)[1]:  # Has file extension
+                    files_to_create.add(full_path)
+                else:
+                    folders_to_create.add(full_path)
+    
+    # Create directories
     for path in folders_to_create:
-        Path(path).mkdir(parents=True, exist_ok=True)
-        print(f"Ensured: {path}")
+        try:
+            Path(path).mkdir(parents=True, exist_ok=True)
+            print(f"Ensured directory: {path}")
+        except Exception as e:
+            print(f"Error creating directory {path}: {e}")
+    
+    # Create files (and their parent directories)
+    for file_path in files_to_create:
+        try:
+            # Create parent directory if it doesn't exist
+            Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+            # Create empty file if it doesn't exist
+            if not os.path.exists(file_path):
+                Path(file_path).touch()
+                print(f"Created file: {file_path}")
+            else:
+                print(f"File already exists: {file_path}")
+        except Exception as e:
+            print(f"Error creating file {file_path}: {e}")
+    
     try_run_docker_compose()
     print("\nDocker setup is complete. Continuing setup...\n")
 
@@ -304,6 +356,7 @@ def paste_api_key():
             lines = f.readlines()
     else:
         lines = []
+    
     def set_or_replace_env_var(key: str, value: str, lines: list[str]) -> list[str]:
         key_found = False
         new_lines = []
@@ -316,12 +369,15 @@ def paste_api_key():
         if not key_found:
             new_lines.append(f"{key}={value}\n")
         return new_lines
+    
     print("\nPaste your Jellyseerr api key key (copied from your jellyseerr settings page): ")
     jelly_key = input("JELLYSEER_API_KEY: ").strip()
     lines = set_or_replace_env_var("JELLYSEER_API_KEY", jelly_key, lines)
+    
     print("\nNow go to your real-debrid account and paste your api key here, you can find it at https://real-debrid.com/devices under API private token, copy and paste the api key here: ")
     rd_key = input("RD_API_KEY: ").strip()
     lines = set_or_replace_env_var("RD_API_KEY", rd_key, lines)
+    
     with open(env_path, "w") as f:
         f.writelines(lines)
     print("\nAPI keys updated successfully in .env file.\n")
@@ -331,8 +387,10 @@ def run_controller():
     if response != 'y':
         print("\nYou can start the Media Controller later by running: python controller.py --initiate\n")
         return
+    
     print("\nLaunching Media Controller with initial scan...\n")
     print("You can always run jf-resolve anytime by running: python controller.py --initiate\n")
+    
     system_platform = platform.system()
     if system_platform != "Windows":
         # Ask Unix users if they want foreground or background
