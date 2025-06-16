@@ -55,6 +55,7 @@ services:
       - '1900:1900/udp'
     volumes:
       - ${ARRPATH}/jellyfin/config:/config
+      - ${ARRPATH}/jellyfin/index.html:/usr/share/jellyfin/web/index.html
       - ${ARRPATH}/radarr/movies:/data/movies
       - ${ARRPATH}/sonarr/tvshows:/data/tvshows
       - ${ARRPATH}/lidarr/music:/data/music
