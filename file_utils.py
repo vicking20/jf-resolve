@@ -8,7 +8,7 @@ VIDEO_EXTENSIONS = {
     '.m4v', '.3gp', '.ogv', '.ts', '.m2ts', '.mts'
 }
 ARCHIVE_EXTENSIONS = { #im lazy, yes i could change this to something else since ive added other extensions to skip...
-    '.rar', '.zip', '.7z', '.tar', '.gz', '.bz2', '.xz', '.txt', '.nfo', '.ts'
+    '.rar', '.zip', '.7z', '.tar', '.gz', '.bz2', '.xz', '.txt', '.nfo', '.ts', '.scr'
 }
 
 UNWANTED_KEYWORDS = {'rarbg.com', 'readme'}

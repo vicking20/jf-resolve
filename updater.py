@@ -1,3 +1,4 @@
+#updater.py
 import os
 import json
 from config_loader import load_config
@@ -31,17 +32,18 @@ def should_delete(fetched_at_str):
 def update_metadata(json_path, is_pending=False):
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-
+    
     torrent_id = data.get("torrent_id")
     fetched_at = data.get("fetched_at")
     first_file_status = data.get("files", [{}])[0].get("status")
-
+    
     if not torrent_id:
         print(f"Missing torrent_id in {json_path}")
         return
-
-    #Check if it should be deleted before proceeding
-    if first_file_status != "downloaded" and should_delete(fetched_at):
+    
+    # Check if it should be deleted before proceeding
+    # Don't delete if status is magnet_conversion (it's still being processed)
+    if first_file_status not in ["downloaded", "magnet_conversion"] and should_delete(fetched_at):
         print(f"Stale pending torrent detected: {torrent_id} - deleting...")
         if delete_rd_torrent(torrent_id):
             parent_dir = os.path.dirname(json_path)
@@ -55,46 +57,85 @@ def update_metadata(json_path, is_pending=False):
             except Exception as e:
                 print(f"Error deleting files in {parent_dir}: {e}")
         return  # Skip the rest if deleted
-
+    
     print(f"Updating links for torrent_id: {torrent_id}")
     direct_links = resolve_rd_id(torrent_id)
+    
     if not direct_links:
         print(f"No links found for torrent_id: {torrent_id}")
         return
-
+    
+    # Check current status
+    current_status = direct_links[0].get('status') if direct_links else 'unknown'
     ready_links = [link for link in direct_links if link.get('status') == 'downloaded']
+    
     if not ready_links:
         print(f"Links not ready yet for torrent_id: {torrent_id}")
-        print(f"Current status: {direct_links[0].get('status') if direct_links else 'unknown'}")
+        print(f"Current status: {current_status}")
+        
+        # If status is magnet_conversion, update the metadata to reflect current state
+        if current_status == "magnet_conversion":
+            print(f"Torrent {torrent_id} still in magnet conversion phase, updating metadata...")
+            updated = {
+                "torrent_id": torrent_id,
+                "fetched_at": datetime.now().isoformat(),
+                "status": "magnet_conversion",
+                "message": "Torrent is being processed by Real-Debrid",
+                "files": direct_links,
+                # Preserve original metadata fields
+                "original_filename": data.get("original_filename"),
+                "extracted_title": data.get("extracted_title"),
+                "extracted_year": data.get("extracted_year"),
+                "folder_name": data.get("folder_name"),
+                "season": data.get("season"),  # For TV shows
+                "episode": data.get("episode")  # For TV shows
+            }
+            
+            # Update the existing pending file with current info
+            with open(json_path, 'w', encoding='utf-8') as f:
+                json.dump(updated, f, indent=2)
+            print(f"Updated magnet conversion status in {json_path}")
+        
         return
-
+    
+    # Files are ready, create final metadata
     updated = {
         "torrent_id": torrent_id,
         "fetched_at": datetime.now().isoformat(),
         "files": ready_links,
+        # Preserve original metadata fields
+        "original_filename": data.get("original_filename"),
+        "extracted_title": data.get("extracted_title"),
+        "extracted_year": data.get("extracted_year"),
+        "folder_name": data.get("folder_name"),
+        "season": data.get("season"),  # For TV shows
+        "episode": data.get("episode")  # For TV shows
     }
-
+    
     parent_dir = os.path.dirname(json_path)
     date_str = datetime.now().strftime("%Y-%m-%d")
     new_json_name = f"{date_str}.json"
     new_json_path = os.path.join(parent_dir, new_json_name)
-
+    
     with open(new_json_path, 'w', encoding='utf-8') as f:
         json.dump(updated, f, indent=2)
-
+    
+    # Create .strm files
     for file_info in ready_links:
-        base_name = os.path.splitext(file_info["filename"])[0]
-        strm_path = os.path.join(parent_dir, base_name + ".strm")
+        original_filename = file_info["filename"]
+        base_name, _ = os.path.splitext(original_filename)
+        strm_filename = base_name + ".strm"
+        strm_path = os.path.join(parent_dir, strm_filename)
         with open(strm_path, 'w', encoding='utf-8') as sf:
             sf.write(file_info["download_url"])
-
+    
     print(f"Updated {len(ready_links)} links saved to {new_json_path}")
-
+    
     # If it was a pending file, remove it
     if is_pending and os.path.exists(json_path):
         os.remove(json_path)
         print(f"Removed old pending file: {os.path.basename(json_path)}")
-
+    
     time.sleep(15)
 
 def scan_and_update(path):

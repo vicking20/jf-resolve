@@ -43,6 +43,9 @@ class RealDebridResolver:
 
     def select_files(self, torrent_id, file_ids):
         """Select specific files from torrent"""
+        if not file_ids:
+            print("No file IDs provided for selection")
+            return
         self._api_request('POST', f'torrents/selectFiles/{torrent_id}',
                          data={'files': ','.join(map(str, file_ids))}, 
                          expected_status=204)
@@ -56,7 +59,7 @@ class RealDebridResolver:
         start_time = time.time()
         while time.time() - start_time < timeout:
             info = self.get_torrent_info(torrent_id)
-            status = info.get('status')
+            status = info.get('status', 'unknown')
             progress = info.get('progress', 0)
             print(f"Status: {status}, Progress: {progress}%")
             if status == "downloaded":
@@ -70,17 +73,28 @@ class RealDebridResolver:
     def process_torrent_files(self, torrent_info):
         """Process torrent files and select all video files"""
         files = torrent_info.get('files', [])
+        
+        # Handle empty files array (e.g., during magnet_conversion)
         if not files:
-            return []
+            status = torrent_info.get('status', 'unknown')
+            if status == 'magnet_conversion':
+                print("Torrent is in magnet conversion phase - no files available yet")
+                return []
+            else:
+                print("No files found in torrent!")
+                return []
+        
         print("Analyzing files...")
         video_files = filter_video_files(files)
         if not video_files:
             print("No suitable video files found!")
             return []
+        
         print(f"Found {len(video_files)} video file(s):")
         for i, file_info in enumerate(video_files[:10]):  # Show up to 10 for logging
             print(f"  {i+1}. {file_info['filename']} ({file_info['size_mb']:.1f} MB)")
-        #Select ALL filtered video files
+        
+        # Select ALL filtered video files
         file_ids = [f['id'] for f in video_files]
         print(f"Selecting {len(video_files)} file(s) for download...")
         self.select_files(torrent_info['id'], file_ids)
@@ -89,21 +103,31 @@ class RealDebridResolver:
     def get_direct_links(self, completed_info):
         """Convert Real-Debrid links to direct download links"""
         links = completed_info.get('links', [])
+        
+        # Handle empty links array
         if not links:
-            raise Exception("No download links found")
+            status = completed_info.get('status', 'unknown')
+            print(f"No download links found (status: {status})")
+            return []
+        
         print("Getting direct download links...")
         direct_links = []
         for link in links:
-            unrestricted = self.unrestrict_link(link)
-            download_url = unrestricted.get('download')
-            filename = unrestricted.get('filename')
-            filesize = unrestricted.get('filesize', 0)
-            if download_url:
-                direct_links.append({
-                    'filename': filename,
-                    'download_url': download_url,
-                    'filesize': filesize
-                })
+            try:
+                unrestricted = self.unrestrict_link(link)
+                download_url = unrestricted.get('download')
+                filename = unrestricted.get('filename')
+                filesize = unrestricted.get('filesize', 0)
+                if download_url:
+                    direct_links.append({
+                        'filename': filename,
+                        'download_url': download_url,
+                        'filesize': filesize
+                    })
+            except Exception as e:
+                print(f"Failed to unrestrict link {link}: {e}")
+                continue
+        
         return direct_links
 
     def resolve_file(self, file_path=None, magnet_url=None):
@@ -114,48 +138,121 @@ class RealDebridResolver:
                 magnet_url = torrent_to_magnet(file_path)
                 print("Generated magnet link")
                 print(f"{magnet_url[:80]}...")
+            
             # Add magnet to RD
             print("Adding magnet to Real-Debrid...")
             add_result = self.add_magnet(magnet_url)
             torrent_id = add_result.get('id')
             print(f"Torrent added with ID: {torrent_id}")
+            
             # Fetch info and process
             info = self.get_torrent_info(torrent_id)
             info['id'] = torrent_id
+            status = info.get('status', 'unknown')
+            
+            # Handle different statuses
+            if status == 'magnet_conversion':
+                print("Torrent is in magnet conversion phase")
+                return [{
+                    "status": "magnet_conversion",
+                    "torrent_id": torrent_id,
+                    "message": "Torrent is being processed, check back later"
+                }]
+            
             selected_files = self.process_torrent_files(info)
+            
+            # If no files were selected (empty or magnet_conversion), return status info
             if not selected_files:
-                return []
+                return [{
+                    "status": status,
+                    "torrent_id": torrent_id,
+                    "message": f"No files available (status: {status})"
+                }]
+            
             # Check download status (non-blocking)
             print("Checking download status...")
             status_result = self.wait_for_download(torrent_id, timeout=5)
-            status = status_result["status"]
-            if status == "downloaded":
+            current_status = status_result["status"]
+            
+            if current_status == "downloaded":
                 links = self.get_direct_links(status_result["info"])
-                return [
-                    {
-                        "status": "downloaded",
-                        "filename": l["filename"],
-                        "download_url": l["download_url"],
-                        "filesize": l["filesize"],
-                        "torrent_id": torrent_id
-                    }
-                    for l in links
-                ]
+                if links:
+                    return [
+                        {
+                            "status": "downloaded",
+                            "filename": l["filename"],
+                            "download_url": l["download_url"],
+                            "filesize": l["filesize"],
+                            "torrent_id": torrent_id
+                        }
+                        for l in links
+                    ]
+                else:
+                    # Downloaded but no links available
+                    return [{
+                        "status": "downloaded_no_links",
+                        "torrent_id": torrent_id,
+                        "message": "Download completed but no links available"
+                    }]
             else:
-                print(f"Not ready yet (status: {status}), returning file metadata for tracking.")
+                print(f"Not ready yet (status: {current_status}), returning file metadata for tracking.")
                 return [
                     {
-                        "status": status,
+                        "status": current_status,
                         "filename": f["filename"],
                         "torrent_id": torrent_id,
                         "filesize": f.get("size", 0)
                     }
                     for f in selected_files
                 ]
+                
         except Exception as e:
             error_msg = str(e)
             print(f"Error resolving file: {error_msg}")
-            raise Exception(error_msg)
+            # Return error info with torrent_id if available
+            error_result = {
+                "status": "error",
+                "message": error_msg
+            }
+            if 'torrent_id' in locals():
+                error_result["torrent_id"] = torrent_id
+            return [error_result]
+
+    def check_torrent_status(self, torrent_id):
+        """Check the status of a specific torrent by ID"""
+        try:
+            info = self.get_torrent_info(torrent_id)
+            status = info.get('status', 'unknown')
+            progress = info.get('progress', 0)
+            
+            result = {
+                "torrent_id": torrent_id,
+                "status": status,
+                "progress": progress,
+                "filename": info.get('filename', 'Unknown'),
+                "bytes": info.get('bytes', 0)
+            }
+            
+            if status == "downloaded":
+                links = self.get_direct_links(info)
+                if links:
+                    result["download_links"] = links
+                else:
+                    result["message"] = "Downloaded but no links available"
+            elif status == "magnet_conversion":
+                result["message"] = "Still converting magnet link"
+            elif status in ["error", "virus", "dead"]:
+                result["message"] = f"Torrent failed with status: {status}"
+            else:
+                result["message"] = f"Torrent is {status} ({progress}%)"
+            
+            return result
+        except Exception as e:
+            return {
+                "torrent_id": torrent_id,
+                "status": "error",
+                "message": str(e)
+            }
 
 def resolve_rd_file(input_arg):
     resolver = RealDebridResolver()
@@ -178,26 +275,60 @@ def resolve_rd_file(input_arg):
     except Exception as e:
         return [], str(e)
 
+def check_rd_torrent_status(torrent_id):
+    """Check status of a specific torrent by ID"""
+    resolver = RealDebridResolver()
+    return resolver.check_torrent_status(torrent_id)
+
 def main():
     """Command-line interface"""
     if len(sys.argv) < 2:
         print("Usage: python rd_resolver.py <torrent_file_or_magnet_url>")
+        print("       python rd_resolver.py --check <torrent_id>")
         print("Example: python rd_resolver.py example.torrent")
         print("Example: python rd_resolver.py 'magnet:?xt=urn:btih:...'")
+        print("Example: python rd_resolver.py --check JCYURNPMTREEY")
         return
+    
+    if sys.argv[1] == "--check" and len(sys.argv) >= 3:
+        torrent_id = sys.argv[2]
+        print(f"Checking status for torrent ID: {torrent_id}")
+        status_info = check_rd_torrent_status(torrent_id)
+        print(f"\nTorrent Status:")
+        print(f"ID: {status_info['torrent_id']}")
+        print(f"Status: {status_info['status']}")
+        print(f"Progress: {status_info['progress']}%")
+        print(f"Filename: {status_info['filename']}")
+        if 'message' in status_info:
+            print(f"Message: {status_info['message']}")
+        if 'download_links' in status_info:
+            print(f"Download links available: {len(status_info['download_links'])}")
+        return
+    
     input_arg = sys.argv[1]
     try:
-        links = resolve_rd_file(input_arg)
+        links, error = resolve_rd_file(input_arg)
+        if error:
+            print(f"Error: {error}")
+            return
+            
         if links:
-            print(f"\nSuccessfully resolved {len(links)} download link(s):")
+            print(f"\nResolved {len(links)} result(s):")
             for i, link_info in enumerate(links, 1):
-                filesize_mb = link_info.get('filesize', 0) / (1024 * 1024) if link_info.get('filesize') else 0
-                print(f"\n{i}. {link_info['filename']}")
-                if filesize_mb > 0:
-                    print(f" Size: {filesize_mb:.1f} MB")
-                print(f" Direct Download: {link_info['download_url']}")
+                print(f"\n{i}. Status: {link_info['status']}")
+                if 'filename' in link_info:
+                    print(f"   Filename: {link_info['filename']}")
+                if 'torrent_id' in link_info:
+                    print(f"   Torrent ID: {link_info['torrent_id']}")
+                if 'filesize' in link_info and link_info['filesize']:
+                    filesize_mb = link_info['filesize'] / (1024 * 1024)
+                    print(f"   Size: {filesize_mb:.1f} MB")
+                if 'download_url' in link_info:
+                    print(f"   Direct Download: {link_info['download_url']}")
+                if 'message' in link_info:
+                    print(f"   Message: {link_info['message']}")
         else:
-            print("\nNo download links could be resolved")
+            print("\nNo results returned")
 
     except Exception as e:
         print(f"Error: {e}")
