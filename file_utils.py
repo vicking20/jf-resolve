@@ -19,9 +19,8 @@ UNWANTED_KEYWORDS = {'rarbg.com', 'readme'}
 BONUS_CONTENT_KEYWORDS = {'making', 'behind', 'bonus', 'extra', 'featurette', 'interview', 'trailer', 'deleted', 'blooper', 'commentary'}
 
 # Size limits in bytes
-MIN_VIDEO_SIZE = 150 * 1024 * 1024  # 150MB minimum for video files
-MIN_FALLBACK_SIZE = 150 * 1024 * 1024  # 150MB for fallback large files
-SIZE_THRESHOLD_PERCENT = 0.70  # Files must be at least 70% of largest file size
+MIN_VIDEO_SIZE = 200 * 1024 * 1024  # 200MB minimum for video files
+MIN_FALLBACK_SIZE = 200 * 1024 * 1024  # 200MB for fallback large files
 
 def should_skip_by_name(filename):
     """Skip files that contain unwanted substrings in the name"""
@@ -55,16 +54,15 @@ def is_video_too_small(file_size, min_size=MIN_VIDEO_SIZE):
 
 def filter_video_files(files):
     """
-    Filter files to get the largest video file and any other large video files (70%+ of largest)
+    Filter files to get all valid video files
     Args:
         files (list): List of file info dicts with 'path', 'id', 'bytes' keys
     Returns:
-        list: List containing qualifying video files and any subtitle files
+        list: List containing all valid video files, or empty list if none found
     """
     video_candidates = []
-    subtitle_files = []
     
-    # First pass: collect video candidates and subtitle files
+    # First pass: collect all valid video candidates
     for file_info in files:
         filename = file_info.get('path', '')
         file_id = file_info.get('id')
@@ -90,73 +88,62 @@ def filter_video_files(files):
             print(f"  Skipping bonus content: {filename}")
             continue
         
-        # Collect subtitle files
-        if is_subtitle_file(filename):
-            subtitle_files.append({
-                'id': file_id,
-                'filename': filename,
-                'size_mb': file_size / (1024 * 1024),
-                'size_bytes': file_size
-            })
-            print(f"  Found subtitle file: {filename}")
+        # Skip non-video files (including subtitles)
+        if not is_video_file(filename):
+            print(f"  Skipping non-video file: {filename}")
             continue
             
-        # Collect video files
-        if is_video_file(filename):
-            # Skip video files that are too small
-            if is_video_too_small(file_size):
-                print(f"  Skipping small video file ({file_size / (1024 * 1024):.1f}MB): {filename}")
-                continue
-                
-            video_candidates.append({
+        # Skip video files that are too small (now 200MB)
+        if is_video_too_small(file_size):
+            print(f"  Skipping small video file ({file_size / (1024 * 1024):.1f}MB): {filename}")
+            continue
+            
+        video_candidates.append({
+            'id': file_id,
+            'filename': filename,
+            'size_mb': file_size / (1024 * 1024),
+            'size_bytes': file_size
+        })
+    
+    # Return all valid video files
+    if video_candidates:
+        # Sort by size (largest first) for consistent ordering
+        video_candidates.sort(key=lambda x: x['size_bytes'], reverse=True)
+        print(f"  Found {len(video_candidates)} valid video files:")
+        for video in video_candidates:
+            print(f"    - {video['filename']} ({video['size_mb']:.1f}MB)")
+        video_files = video_candidates
+        return video_files
+    
+    # If no video files found, look for largest non-archive file as fallback
+    print("  No video files found, looking for large non-archive files...")
+    fallback_candidates = []
+    
+    for file_info in files:
+        filename = file_info.get('path', '')
+        file_id = file_info.get('id')
+        file_size = file_info.get('bytes', 0)
+        
+        if (not is_archive_file(filename) and 
+            not is_subtitle_file(filename) and
+            not is_bonus_content(filename) and
+            not should_skip_by_name(filename) and
+            not is_sample_file(filename) and
+            file_size > MIN_FALLBACK_SIZE):
+            fallback_candidates.append({
                 'id': file_id,
                 'filename': filename,
                 'size_mb': file_size / (1024 * 1024),
                 'size_bytes': file_size
             })
     
-    # Find qualifying video files using percentage threshold
-    selected_videos = []
-    if video_candidates:
-        # Sort by size (largest first)
-        video_candidates.sort(key=lambda x: x['size_bytes'], reverse=True)
-        largest_size = video_candidates[0]['size_bytes']
-        size_threshold = largest_size * SIZE_THRESHOLD_PERCENT
-        
-        for video in video_candidates:
-            if video['size_bytes'] >= size_threshold:
-                selected_videos.append(video)
-                print(f"  Selected video file ({video['size_mb']:.1f}MB, {video['size_bytes']/largest_size*100:.1f}% of largest): {video['filename']}")
-            else:
-                print(f"  Skipping small video file ({video['size_mb']:.1f}MB, {video['size_bytes']/largest_size*100:.1f}% of largest): {video['filename']}")
+    if fallback_candidates:
+        largest_fallback = max(fallback_candidates, key=lambda x: x['size_bytes'])
+        print(f"  Selected largest fallback file ({largest_fallback['size_mb']:.1f}MB): {largest_fallback['filename']}")
+        video_files = [largest_fallback]
+        return video_files
     
-    # If no video files found, look for largest non-archive file as fallback
-    if not selected_videos:
-        print("  No video files found, looking for large non-archive files...")
-        fallback_candidates = []
-        
-        for file_info in files:
-            filename = file_info.get('path', '')
-            file_id = file_info.get('id')
-            file_size = file_info.get('bytes', 0)
-            
-            if (not is_archive_file(filename) and 
-                not is_subtitle_file(filename) and
-                not is_bonus_content(filename) and
-                file_size > MIN_FALLBACK_SIZE):
-                fallback_candidates.append({
-                    'id': file_id,
-                    'filename': filename,
-                    'size_mb': file_size / (1024 * 1024),
-                    'size_bytes': file_size
-                })
-        
-        if fallback_candidates:
-            largest_fallback = max(fallback_candidates, key=lambda x: x['size_bytes'])
-            selected_videos.append(largest_fallback)
-            print(f"  Selected largest fallback file ({largest_fallback['size_mb']:.1f}MB): {largest_fallback['filename']}")
-    
-    # Combine results: selected videos + all subtitle files
-    video_files = selected_videos + subtitle_files
-    
+    # Return empty video_files list if no valid files found
+    print("  No valid files found - returning invalid")
+    video_files = []
     return video_files

@@ -51,3 +51,7 @@ If not, you can follow a manual setup below
 This is all for educational purposes... I was testing to see if you could programmatically make jellyfin play media that does not exist locally on your machine and complicate the process by adding a debrid service and also tying it in with the common arr stack. It was fun, I think its okay, and others can modify to their liking or use for educational purposes too. Jf-resole was really made for linux machines, I do not promise that this will work fine on other platforms, precisely windows, but its worth a try. Im not able to test it for errors too, and it probably has a couple of those, if and when I can, I can check those out and fix the errors.
 
 If you dont find your media populated on jellyfin, rescan your library...
+
+In addition, you can make it easier on your server by going to radarr and sonarr, changin the profile or reducing them, if for example you have a remux, which could be 20gb for one movie, youll probably be stuck in a spinning loop for a long time, unfortunately, I cant fix that. Here is a guide explaining how to setup quality profiles: [text](https://trash-guides.info/Radarr/radarr-setup-quality-profiles/) 
+
+
