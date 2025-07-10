@@ -52,6 +52,6 @@ This is all for educational purposes... I was testing to see if you could progra
 
 If you dont find your media populated on jellyfin, rescan your library...
 
-In addition, you can make it easier on your server by going to radarr and sonarr, changin the profile or reducing them, if for example you have a remux, which could be 20gb for one movie, youll probably be stuck in a spinning loop for a long time, unfortunately, I cant fix that. Here is a guide explaining how to setup quality profiles: [text](https://trash-guides.info/Radarr/radarr-setup-quality-profiles/) 
+In addition, you can make it easier on your server by going to radarr and sonarr, changin the profile or reducing them, if for example you have a remux, which could be 20gb for one movie, youll probably be stuck in a spinning loop for a long time, unfortunately, I cant fix that. Here is a guide explaining how to setup quality profiles: [Trashguide](https://trash-guides.info/Radarr/radarr-setup-quality-profiles/) 
 
 
