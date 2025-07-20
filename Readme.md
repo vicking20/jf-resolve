@@ -19,6 +19,24 @@ Here's what your media library tools might look like before `jf-resolve` is init
 ![sonarr initial size](images/inittvsize.png)
 ![sonarr initial list](images/inittvlist.png)
 
+## In Progress
+This is what it looks like when populating your library
+
+### Jf-controller
+![Jellyfin initial controller run](images/inprog.png)
+
+### Radarr
+![radarr in progress size](images/radarrinprogsize.png)
+![radarr in progress list](images/radarrinproglist.png)
+
+### sonarr
+![sonarr in progress size](images/sonarrinprogsize.png)
+![sonarr in progress list](images/sonarrinproglist.png)
+
+### jellyfin
+![Jellyfin in progress Library](images/jellyfininprog.png)
+*Started at 10:24am and current screenshots taken at 10:40am. Metadata are not completely loaded yet
+
 ## Pros and Cons of using `jf-resolve`
 
 ### Pros
