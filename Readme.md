@@ -47,6 +47,7 @@ This is what it looks like when populating your library
 * **Subtitles Variability:** Subtitles may or may not work depending on the media source. Using an Open Subtitles plugin in Jellyfin might help resolve this.
 * **On-the-fly Transcoding:** Media requiring transcoding will be transcoded each time it's played, as the file isn't hosted locally.
 * **Limited Compatibility with Existing Arr Stacks:** It may not be fully compatible with an already extensively configured Radarr/Sonarr setup.
+* **Duplicated Media:** In some cases, media is duplicated from having multiple media sources.
 
 ## Stack Used
 
