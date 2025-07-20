@@ -13,7 +13,7 @@ movie_path = cfg.get("JELLYFIN_MOVIE_PATH", "./media/radarr/movies")
 tv_path = cfg.get("JELLYFIN_TV_PATH", "./media/sonarr/tvshows")
 crawl_path = cfg.get("JELLYFIN_CRAWL_PATH", "./media/jellyfin/crawl")
 now = datetime.now()
-threshold = timedelta(days=30)
+threshold = timedelta(days=10)
 
 def is_old_enough(date_str):
     try:

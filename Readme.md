@@ -1,6 +1,22 @@
 jf-resolve acts as a bridge between real debrid and jellyfin. It connects to jellyfin, jellyseerr, radarr, sonarr, prowlarr and populates your library with some movies and tv shows through jellyseerr.
 Jf-resolve does not store direct files to your machine, instead it connects to your real debrid account and populates your library with streamable links from real debrid, all requests made from jellyseerr also will be automatically be added to your library without downloading the whole file but is playable from the moment jellyfin adds it to your library.
 
+##On Initialization
+
+##Jellyfin
+##Before
+![Jellyfin initial Library](images/libinit.png)
+
+##Radarr
+##Before
+![radarr initial size](images/initmoviesize.png)
+![radarr initial list](images/initmovielist.png)
+
+##Sonarr
+#Before
+![sonarr initial size](images/inittvsize.png)
+![sonarr initial list](images/inittvlist.png)
+
 ##pros
 - Slightly less wait time, items can be played almost immediately once they appear on jellyfin
 
