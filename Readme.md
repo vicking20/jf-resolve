@@ -3,33 +3,33 @@ Jf-resolve does not store direct files to your machine, instead it connects to y
 
 ##On Initialization
 
-##Jellyfin
-##Before
+#**Jellyfin**
+#Before
 ![Jellyfin initial Library](images/libinit.png)
 
-##Radarr
-##Before
+#**Radarr**
+#Before
 ![radarr initial size](images/initmoviesize.png)
 ![radarr initial list](images/initmovielist.png)
 
-##Sonarr
+#**Sonarr**
 #Before
 ![sonarr initial size](images/inittvsize.png)
 ![sonarr initial list](images/inittvlist.png)
 
-##pros
+#**pros**
 - Slightly less wait time, items can be played almost immediately once they appear on jellyfin
 
 - Space savings, 14 movie requests made by jellyseerr, the total size of my movies library came out to be 248kb considering youre just streaming instead of having the files locally
 
-##cons
+#**cons**
 - Subtitles may, or may not work depending on the media you get. Using open subtitles plugin may help fix this
 
 - Media that need transcoding will be transcoded each time you play them, the file isnt hosted locally, so thats to be expected
 
 - Not fully compatible with an already setup arr stack
 
-##stack used:
+#**stack used:**
 - Jellyfin
 - Jellyseerr
 - Radarr
@@ -38,7 +38,7 @@ Jf-resolve does not store direct files to your machine, instead it connects to y
 
 Note: Although you can set the jellyseerr aggression to a high number, its probably better to keep it low, below 5 if possible, because high numbers can mean youre scraping tons of items you may not need, requests made by jellyseerr manually are still processed as usual, the library will grow eventually.
 
-##High level overview
+#**High level overview**
 The whole system is python based, python, pip and docker are compulsory for the setup to work. You also need to have a real debrid subscription and an api key for this to work and the installer guides you on the necessary steps needed.
 
 The controller calls your jellyseerr backend to query for movies and tv shows based on how aggresive you want it to be, then it requests for those from jellyseerr and jellyseerr sends them either to radarr or prowlarr, the torrent/magnet files are loaded, controller watchdog will pick that up and make a request to your real debrid account from your api key, after that, a link is generated for you that is appeneded to a streamable file and added to your jellyfin library, the watchdog at the moment refreshes those links, I've heard that these links expire... So ive set it to refresh them after 30 days, I really don't know if 30 days is too long a time however, till someone can confirm what the actual duration is.
@@ -55,7 +55,7 @@ I also give credit to automation avenue as his arr compose file was what i used 
 To setup jf-resolve, clone/download the project, go to the folder and run installer.py, it should do most of the setup for you from the ground up and run the controller.
 If not, you can follow a manual setup below
 
-##manual setup (not needed if you are running with installer.py)
+#**manual setup (not needed if you are running with installer.py)**
 -> open the example.env file and update the path where you want to set things up, this is the folder where all media and container volumes will be mapped to, rename this file to .env when completed
 -> go to real-debrid, get your api key and paste into the line for the real debrid api key
 -> check the compose file and see if you need to modify to your liking, if not, run the docker compose up -d command and get your setup running
