@@ -19,7 +19,7 @@ UNWANTED_KEYWORDS = {'rarbg.com', 'readme'}
 BONUS_CONTENT_KEYWORDS = {'making', 'behind', 'bonus', 'extra', 'featurette', 'interview', 'trailer', 'deleted', 'blooper', 'commentary'}
 
 # Size limits in bytes
-MIN_VIDEO_SIZE = 200 * 1024 * 1024  # 200MB minimum for video files
+MIN_VIDEO_SIZE = 110 * 1024 * 1024  # 200MB minimum for video files
 MIN_FALLBACK_SIZE = 200 * 1024 * 1024  # 200MB for fallback large files
 
 def should_skip_by_name(filename):

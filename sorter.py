@@ -6,6 +6,7 @@ import shutil
 import os
 import re
 import time
+from delete_rd_torrent import delete_rd_torrent
 
 cfg = load_config()
 radarr_blackhole_path = cfg["RADARR_BLACKHOLE"]
