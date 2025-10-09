@@ -273,96 +273,6 @@ def handle_file_error(error_msg, file_path):
         print("Rate limit hit. Sleeping for 1 minute...")
         time.sleep(60)
 
-# def process_movie_file(file, full_path):
-#     """Process a movie file with improved folder matching"""
-#     print(f"\nProcessing movie: {file}")
-    
-#     # Extract title and year from filename
-#     title, year = extract_title_year_from_filename(file)
-#     print(f"Extracted title: '{title}'" + (f", year: {year}" if year else ""))
-    
-#     # First, try to find an existing folder
-#     existing_folder = find_existing_movie_folder(title, year, movie_output_root)
-    
-#     if existing_folder:
-#         # Use existing folder
-#         folder_name = existing_folder
-#         movie_folder = os.path.join(movie_output_root, folder_name)
-#         print(f"Using existing folder: '{folder_name}'")
-#     else:
-#         # Create new folder name
-#         if year:
-#             folder_name = f"{title} ({year})"
-#         else:
-#             folder_name = title
-#         movie_folder = os.path.join(movie_output_root, folder_name)
-#         print(f"Creating new folder: '{folder_name}'")
-#         os.makedirs(movie_folder, exist_ok=True)
-    
-#     # Apply rate limiting before making API calls
-#     rate_limit()
-     
-#     results, error_msg = resolve_rd_file(full_path)
-#     if error_msg:
-#         print(f"Resolve error: {error_msg}")
-#         handle_file_error(error_msg, full_path)
-#         return
-#     if handle_invalid_magnet(results, full_path):
-#         # Already handled deletion and logging, just stop processing
-#         return
-#     all_downloaded = all(r.get("status") == "downloaded" for r in results)
-#     is_pending = not all_downloaded
-     
-#     # Save metadata
-#     torrent_id = results[0].get("torrent_id")
-#     metadata = {
-#         "torrent_id": torrent_id,
-#         "fetched_at": datetime.now().isoformat(),
-#         "original_filename": file,
-#         "extracted_title": title,
-#         "extracted_year": year,
-#         "folder_name": folder_name,
-#         "files": results
-#     }
-    
-#     # Add 'pending' suffix to JSON if not yet downloaded
-#     date_stamp = datetime.now().strftime("%Y-%m-%d")
-#     json_suffix = "-pending" if is_pending else ""
-#     json_path = os.path.join(movie_folder, f"{date_stamp}{json_suffix}.json")
-    
-#     with open(json_path, "w", encoding="utf-8") as jf:
-#         json.dump(metadata, jf, indent=2)
-    
-#     print(f"Saved metadata to {json_path}")
-    
-#     # Only create .strm files if all files are downloaded
-#     if not is_pending:
-#         for item in results:
-#             strm_path = os.path.join(movie_folder, f"{item['filename']}.strm")
-#             with open(strm_path, "w", encoding="utf-8") as sf:
-#                 sf.write(item["download_url"])
-#         print(f"Created {len(results)} .strm file(s) in {movie_folder}")
-#     else:
-#         print("Download not complete yet, .strm files not created.")
-    
-#     # Move original file
-#     dest_file_path = os.path.join(movie_folder, file)
-#     shutil.move(full_path, dest_file_path)
-#     print(f"Moved source file to {dest_file_path}")
-
-# def handle_invalid_magnet(results, full_path):
-#     if results and any(r.get("status") == "magnet_error" for r in results):
-#         torrent_id = results[0].get("torrent_id")
-#         print(f"Invalid magnet detected for torrent_id {torrent_id}, deleting...")
-#         if delete_rd_torrent(torrent_id):
-#             try:
-#                 os.remove(full_path)
-#                 print(f"Deleted local file {full_path}")
-#             except Exception as e:
-#                 print(f"Error deleting local file {full_path}: {e}")
-#         return True
-#     return False
-
 def process_movie_file(file, full_path):
     """Process a movie file with improved folder matching"""
     print(f"\nProcessing movie: {file}")
@@ -513,7 +423,7 @@ def process_tv_file(file, full_path):
     print(f"Detected: Season {season_num}" + (f", Episode {episode_num}" if episode_num else ""))
     
     rate_limit()
-    results, error_msg = resolve_rd_file(full_path)
+    results, error_msg = resolve_rd_file(full_path, is_tv=True)
     
     if error_msg:
         print(f"Resolve error: {error_msg}")
@@ -693,6 +603,8 @@ def cleanup_duplicate_folders():
                 if folder != primary_folder:
                     folder_path = os.path.join(tv_output_root, folder)
                     print(f"Merging '{folder}' into '{primary_folder}'")
+                    
+                    # Move all files and directories
                     for item in os.listdir(folder_path):
                         src_item = os.path.join(folder_path, item)
                         dst_item = os.path.join(primary_path, item)
@@ -709,11 +621,13 @@ def cleanup_duplicate_folders():
                         else:
                             if not os.path.exists(dst_item):
                                 shutil.move(src_item, dst_item)
+                    
+                    # Force remove the folder and any remaining empty subdirectories
                     try:
-                        os.rmdir(folder_path)
-                        print(f"  Removed empty folder: '{folder}'")
-                    except OSError:
-                        print(f"  Could not remove folder '{folder}' (not empty)")
+                        shutil.rmtree(folder_path)
+                        print(f"  Removed folder: '{folder}'")
+                    except OSError as e:
+                        print(f"  Error removing folder '{folder}': {e}")
                         
     # Also clean up movie folders with the same logic
     if not os.path.exists(movie_output_root):
@@ -761,6 +675,8 @@ def cleanup_duplicate_folders():
                 if folder != primary_folder:
                     folder_path = os.path.join(movie_output_root, folder)
                     print(f"Merging movie folder '{folder}' into '{primary_folder}'")
+                    
+                    # Move all files
                     for item in os.listdir(folder_path):
                         src_item = os.path.join(folder_path, item)
                         dst_item = os.path.join(primary_path, item)
@@ -768,11 +684,13 @@ def cleanup_duplicate_folders():
                             shutil.move(src_item, dst_item)
                         else:
                             print(f"  Skipping existing file: {item}")
+                    
+                    # Force remove the folder and any remaining contents
                     try:
-                        os.rmdir(folder_path)
-                        print(f"  Removed empty movie folder: '{folder}'")
-                    except OSError:
-                        print(f"  Could not remove movie folder '{folder}' (not empty)")
+                        shutil.rmtree(folder_path)
+                        print(f"  Removed movie folder: '{folder}'")
+                    except OSError as e:
+                        print(f"  Error removing movie folder '{folder}': {e}")
 
 def scan_and_resolve():
     """Main function to scan and resolve both movies and TV shows"""

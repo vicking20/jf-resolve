@@ -70,7 +70,8 @@ class RealDebridResolver:
         # Timed out but still not downloaded
         return {"status": status, "info": info}
 
-    def process_torrent_files(self, torrent_info):
+    def process_torrent_files(self, torrent_info, is_tv=False):
+    #def process_torrent_files(self, torrent_info):
         """Process torrent files and select all video files"""
         files = torrent_info.get('files', [])
         
@@ -85,7 +86,7 @@ class RealDebridResolver:
                 return []
         
         print("Analyzing files...")
-        video_files = filter_video_files(files)
+        video_files = filter_video_files(files, is_tv=is_tv)
         if not video_files:
             print("No suitable video files found!")
             return []
@@ -130,7 +131,7 @@ class RealDebridResolver:
         
         return direct_links
 
-    def resolve_file(self, file_path=None, magnet_url=None):
+    def resolve_file(self, file_path=None, magnet_url=None, is_tv=False):
         """Main method to resolve torrent/magnet to direct download links"""
         try:
             # Convert .torrent to magnet if needed
@@ -159,7 +160,7 @@ class RealDebridResolver:
                     "message": "Torrent is being processed, check back later"
                 }]
             
-            selected_files = self.process_torrent_files(info)
+            selected_files = self.process_torrent_files(info, is_tv=is_tv)
             
             # If no files were selected (empty or magnet_conversion), return status info
             if not selected_files:
@@ -209,7 +210,17 @@ class RealDebridResolver:
         except Exception as e:
             error_msg = str(e)
             print(f"Error resolving file: {error_msg}")
-            # Return error info with torrent_id if available
+
+            # Handle specific "too_many_active_downloads" error
+            if "too_many_active_downloads" in error_msg.lower():
+                print("Too many active downloads, skipping this torrent...")
+                return [{
+                    "status": "skipped",
+                    "torrent_id": torrent_id if 'torrent_id' in locals() else None,
+                    "message": "Too many active downloads, skipped for now"
+                }]
+
+            # Return general error info with torrent_id if available
             error_result = {
                 "status": "error",
                 "message": error_msg
@@ -254,21 +265,24 @@ class RealDebridResolver:
                 "message": str(e)
             }
 
-def resolve_rd_file(input_arg):
+def resolve_rd_file(input_arg, is_tv=False):
     resolver = RealDebridResolver()
     try:
         if input_arg.startswith('magnet:'):
             print("Processing direct magnet link...")
-            results = resolver.resolve_file(magnet_url=input_arg)
+            results = resolver.resolve_file(magnet_url=input_arg, is_tv=is_tv)
+
         elif input_arg.endswith('.magnet'):
             print("Reading magnet link from .magnet file...")
             with open(input_arg, 'r', encoding='utf-8') as f:
                 magnet_link = f.read().strip()
             print(f"Read magnet link: {magnet_link[:80]}...")
-            results = resolver.resolve_file(magnet_url=magnet_link, file_path=input_arg)
+            results = resolver.resolve_file(magnet_url=magnet_link, file_path=input_arg, is_tv=is_tv)
+
         elif input_arg.endswith('.torrent'):
             print("Processing .torrent file...")
-            results = resolver.resolve_file(file_path=input_arg)
+            results = resolver.resolve_file(file_path=input_arg, is_tv=is_tv)
+
         else:
             raise ValueError("Unsupported file type or input.")
         return results, None

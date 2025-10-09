@@ -19,7 +19,7 @@ UNWANTED_KEYWORDS = {'rarbg.com', 'readme'}
 BONUS_CONTENT_KEYWORDS = {'making', 'behind', 'bonus', 'extra', 'featurette', 'interview', 'trailer', 'deleted', 'blooper', 'commentary'}
 
 # Size limits in bytes
-MIN_VIDEO_SIZE = 110 * 1024 * 1024  # 200MB minimum for video files
+MIN_VIDEO_SIZE = 110 * 1024 * 1024  # 200MB minimum for video files now skipping tv, animation episodes can be smaller than 200mb
 MIN_FALLBACK_SIZE = 200 * 1024 * 1024  # 200MB for fallback large files
 
 def should_skip_by_name(filename):
@@ -52,7 +52,7 @@ def is_video_too_small(file_size, min_size=MIN_VIDEO_SIZE):
     """Check if video file is below minimum size limit"""
     return file_size < min_size
 
-def filter_video_files(files):
+def filter_video_files(files, is_tv=False):
     """
     Filter files to get all valid video files
     Args:
@@ -70,32 +70,32 @@ def filter_video_files(files):
         
         # Skip archive files
         if is_archive_file(filename):
-            print(f"  Skipping other: {filename}")
+            print(f" Skipping other: {filename}")
             continue
-            
+        
         # Skip sample files
         if is_sample_file(filename):
-            print(f"  Skipping sample file: {filename}")
+            print(f" Skipping sample file: {filename}")
             continue
-            
+        
         # Skip unwanted names
         if should_skip_by_name(filename):
-            print(f"  Skipping unwanted name: {filename}")
+            print(f" Skipping unwanted name: {filename}")
             continue
-            
+        
         # Skip bonus content
         if is_bonus_content(filename):
-            print(f"  Skipping bonus content: {filename}")
+            print(f" Skipping bonus content: {filename}")
             continue
         
         # Skip non-video files (including subtitles)
         if not is_video_file(filename):
-            print(f"  Skipping non-video file: {filename}")
+            print(f" Skipping non-video file: {filename}")
             continue
-            
-        # Skip video files that are too small (now 200MB)
-        if is_video_too_small(file_size):
-            print(f"  Skipping small video file ({file_size / (1024 * 1024):.1f}MB): {filename}")
+        
+        # Skip video files that are too small (only for movies, not TV)
+        if not is_tv and is_video_too_small(file_size):
+            print(f" Skipping small video file ({file_size / (1024 * 1024):.1f}MB): {filename}")
             continue
             
         video_candidates.append({

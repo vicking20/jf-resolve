@@ -137,3 +137,6 @@ This option is not needed if you use `installer.py`.
 This project is intended for **educational purposes only**. It was developed to explore the programmatic playback of non-local media through Jellyfin, integrating a debrid service and the common "Arr" stack. While it was a fun experiment, it is provided as-is, and others are welcome to modify or use it for their own educational purposes.
 
 `jf-resolve` was primarily designed for **Linux machines**. While it might work on other platforms (like Windows), compatibility is not guaranteed, and thorough testing for errors on other platforms has not been performed. Error fixes will be addressed as time permits.
+
+## Updates
+There has been some activity, so Im updating this, there were some adjustments made locally that were not pushed, I will update as much as I can, but it seems I will instead make a new project (media manager) from the ground up, and will try to make it have less moving parts compared to jellyfin and couple of other arr stacks...
