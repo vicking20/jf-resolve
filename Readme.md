@@ -77,7 +77,7 @@ Here's how the system works:
 * **TV Series Updates:** TV series are sorted and updated in conjunction with Sonarr when new episodes are added or existing ones are updated.
 * **Quality:** The quality of your results will depend on the quality of your indexers. Media quality is also determined by your default resolution set in Jellyseerr. For instance, if you set 1080p as default, Jellyseerr will request 1080p media files. You can change this in Jellyseerr settings if file sizes become too large (e.g., some 1080p movies can be as large as 16GB). While transcoding is useful for local media to reduce file sizes, `jf-resolve` currently doesn't address this for streamed content.
 
-**Customizing Jellyfin:** If you're not using Jellyfin themes but want to customize your web client, check out [ElegantFin](https://github.com/lscambo13/ElegantFin/releases).
+**Customizing Jellyfin:** If you're not using Jellyfin themes but want to customize your web client, check out [ElegantFin](https://github.com/lscambo13/ElegantFin/releases) or [JellyfinMediaBar](https://github.com/MakD/Jellyfin-Media-Bar)
 
 **Credits:**
 All credit goes to the owners of the original projects and the teams behind Jellyfin, Jellyseerr, Radarr, Sonarr, and Prowlarr. Their work makes this possible. Special thanks also to Automation Avenue for their arr compose file, which was instrumental in setting up this project.
@@ -139,4 +139,5 @@ This project is intended for **educational purposes only**. It was developed to 
 `jf-resolve` was primarily designed for **Linux machines**. While it might work on other platforms (like Windows), compatibility is not guaranteed, and thorough testing for errors on other platforms has not been performed. Error fixes will be addressed as time permits.
 
 ## Updates
-There has been some activity, so Im updating this, there were some adjustments made locally that were not pushed, I will update as much as I can, but it seems I will instead make a new project (media manager) from the ground up, and will try to make it have less moving parts compared to jellyfin and couple of other arr stacks...
+I will try to update this as much as I can and fix errors that users may have.
+If time permits, I will try to write something from the ground up, with less moving parts, but thats in the distant future... maybe.
