@@ -83,7 +83,7 @@ Here's how the system works:
 All credit goes to the owners of the original projects and the teams behind Jellyfin, Jellyseerr, Radarr, Sonarr, and Prowlarr. Their work makes this possible. Special thanks also to Automation Avenue for their arr compose file, which was instrumental in setting up this project.
 
 ## Setup Guide
-
+### Important: Docker is needed for this to work. If you do not have docker setup on your machine, please install it first
 To set up `jf-resolve`, you have two options:
 
 ### Option 1: Using the Installer Script (Recommended)
