@@ -194,19 +194,32 @@ def extract_tv_show_title(filename):
     
     # More comprehensive patterns to identify where the title ends
     title_end_patterns = [
-        # Season/Episode patterns
-        r'\bS\d{1,2}E\d{1,2}\b',                    # S01E01
-        r'\bS\d{1,2}\.E\d{1,2}\b',                  # S01.E01
-        r'\bS\d{1,2}\s*-\s*E\d{1,2}\b',            # S01 - E01
-        r'\bSeason\s*\d{1,2}\s*Episode\s*\d{1,2}\b', # Season 1 Episode 1
-        r'\b\d{1,2}x\d{1,2}\b',                     # 1x01
-        r'\bS\d{1,2}\.COMPLETE\b',                  # S01.COMPLETE
-        r'\bS\d{1,2}\b',                            # S01
-        r'\bSeason\s*\d{1,2}\b',                    # Season 1
+        # Season/Episode patterns (including multi-language)
+        r'\bS\d{1,2}E\d{1,2}\b',  # S01E01
+        r'\bS\d{1,2}\.E\d{1,2}\b',  # S01.E01
+        r'\bS\d{1,2}\s*-\s*E\d{1,2}\b',  # S01 - E01
+        r'\bSeason\s*\d{1,2}\s*Episode\s*\d{1,2}\b',  # Season 1 Episode 1
+        r'\b\d{1,2}x\d{1,2}\b',  # 1x01
+        r'\bS\d{1,2}\.COMPLETE\b',  # S01.COMPLETE
+        r'\bS\d{1,2}\b',  # S01
+        r'\bSeason\s*\d{1,2}\b',  # Season 1
+        
+        # Multi-language season keywords
+        r'\bSaison\s*\d{1,2}\b',  # Saison 1 (French)
+        r'\bStaffel\s*\d{1,2}\b',  # Staffel 1 (German)
+        r'\bTemporada\s*\d{1,2}\b',  # Temporada 1 (Spanish)
+        r'\bStagione\s*\d{1,2}\b',  # Stagione 1 (Italian)
+        r'\bSeizoen\s*\d{1,2}\b',  # Seizoen 1 (Dutch)
+        
         # Quality/format indicators
         r'\b(?:720p|1080p|4K|2160p|BluRay|WEB-DL|WEBRip|HEVC|x265|x264|YTS|MeGusta|EZTV|HorribleSubs|AMZN|MAX|HDR|PROPER|REPACK)\b',
+        
+        # Language/subtitle indicators (should come before year)
+        r'\b(?:MULTI|TRUEFRENCH|VOSTFR|FRENCH|SUBFRENCH|VOST|VFF|VFQ)\b',
+        
         # Release group patterns
-        r'\[.*?\]',   
+        r'\[.*?\]',
+        
         # Year patterns
         r'\b(?:19|20)\d{2}\b(?!\s*-)',
     ]

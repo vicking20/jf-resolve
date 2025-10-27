@@ -4,3 +4,4 @@ python-dotenv
 bencodepy
 tzlocal
 pyyaml
+psutil

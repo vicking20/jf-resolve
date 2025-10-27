@@ -141,3 +141,9 @@ This project is intended for **educational purposes only**. It was developed to 
 ## Updates
 I will try to update this as much as I can and fix errors that users may have.
 If time permits, I will try to write something from the ground up, with less moving parts, but thats in the distant future... maybe.
+
+## Update 27-10-25
+- Added standalone python script for managing and updating jf.resolve, when there are minor updates that dont break things, the script jf_manager.py can be triggered and it will kill instances of jf resolve and run it again.
+- Added new requirement "psutil" to requirements for getting process id when shuutting down old jf resolve process
+- Improved series detection by filtering out some language naming schemes
+- For this update, you may need to backup your .env, config.ini files and your arr path folders, then redownload the project, and restore the files there, you could also set up the process again from scratch, it depends. This time, there is an updater, it should make the process slightly more polished and for subsequent updates, you can run the jf_updater.py and that possibly should update the process, and restart it. (Note: This update my fail, they were not tested on my machine because I'm not actively using the project, if it fails, please open an issue, and itll be... resolved😂...)
