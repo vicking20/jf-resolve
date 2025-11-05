@@ -1,3 +1,11 @@
+⚠️ **PROJECT DEPRECATED** ⚠️
+
+This project is **no longer in active development** and has been superseded by [**jfresolve**](https://github.com/vicking20/jfresolve).
+
+**Users with Jellyfin 10.11.x and above should use [jfresolve](https://github.com/vicking20/jfresolve) instead.** This repository will no longer receive updates.
+
+---
+
 # jf-resolve: Bridging Real-Debrid and Jellyfin for Streamlined Media Consumption
 
 `jf-resolve` acts as a crucial bridge between Real-Debrid and your Jellyfin media server. It integrates with Jellyfin, Jellyseerr, Radarr, Sonarr, and Prowlarr to automatically populate your media library with movies and TV shows.
