@@ -1,157 +1,240 @@
-⚠️ **PROJECT DEPRECATED** ⚠️
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vicking20/jfresolve/main/jfresolve.png" alt="Jfresolve Logo" width="128" height="128">
+</p>
 
-This project is **no longer in active development** and has been superseded by [**jfresolve**](https://github.com/vicking20/jfresolve).
+# JF-Resolve
 
-**Users with Jellyfin 10.11.x and above should use [jfresolve](https://github.com/vicking20/jfresolve) instead.** This repository will no longer receive updates.
+JF-Resolve is a web-based application that bridges Jellyfin media server with Real-Debrid and AllDebrid services. It allows you to build and manage a virtual media library by discovering content from TMDB and generating STRM files that dynamically resolve to debrid-cached streams.
 
----
+<p align="center">
+  <a href="https://discord.gg/hPz3qn72Ue" target="_blank">
+    <img src="https://img.shields.io/badge/Chat%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord">
+  </a>
+</p>
 
-# jf-resolve: Bridging Real-Debrid and Jellyfin for Streamlined Media Consumption
+### JF-Resolve
+![JF-Resolve](images/jfresolvesetup.png)
+### Discover
+![JF-Resolve Discover](images/discover.png)
 
-`jf-resolve` acts as a crucial bridge between Real-Debrid and your Jellyfin media server. It integrates with Jellyfin, Jellyseerr, Radarr, Sonarr, and Prowlarr to automatically populate your media library with movies and TV shows.
+## What It Does
 
-**Key Feature:** `jf-resolve` does not store direct files locally on your machine. Instead, it connects to your Real-Debrid account and populates your Jellyfin library with streamable links from Real-Debrid. All requests made via Jellyseerr are automatically added to your library and are playable almost instantly, without requiring local downloads.
+JF-Resolve acts as a middleware between your Jellyfin server and debrid services. Instead of storing large media files, it creates lightweight STRM files that Jellyfin can play. When you start playback, these files redirect to premium cached streams from your debrid service through Stremio addons.
 
-## Initial Library State (Before `jf-resolve`)
+This approach provides access to a vast content library without requiring significant storage space or maintaining physical media files. You also no longer need to wait for downloads.
 
-Here's what your media library tools might look like before `jf-resolve` is initialized:
+## Features
 
-### Jellyfin
-![Jellyfin initial Library](images/libinit.png)
+### Content Discovery
+- Search for movies and TV shows using The Movie Database
+- Browse trending content updated daily
+- Explore popular movies and TV shows by category
+- Check if content is already in your library
 
-### Radarr
-![radarr initial size](images/initmoviesize.png)
-![radarr initial list](images/initmovielist.png)
+### Library Management
+- Add movies and TV shows with a single click
+- Generate multiple quality versions per item (4K, 1080p, 720p)
+- Automatically organize content in Jellyfin-compatible folder structures
+- Track new episodes for TV series and update automatically
+- Remove items and clean up STRM files when no longer needed
 
-### Sonarr
-![sonarr initial size](images/inittvsize.png)
-![sonarr initial list](images/inittvlist.png)
+### Stream Resolution
+- Automatically query Stremio addons for available streams
+- Intelligent quality matching based on your preferences
+- Automatic failover to alternative streams if playback fails
+- Grace period handling to allow buffering without switching streams
+- Support for movies and individual TV show episodes
 
-## In Progress
-This is what it looks like when populating your library
+### Automation
+- Configure automatic library population from trending and popular lists
+- Schedule periodic updates to detect new TV show episodes
+- Trigger Jellyfin library scans after adding content (Experimental)
+- Manage multiple quality versions simultaneously
 
-### Jf-controller
-![Jellyfin initial controller run](images/inprog.png)
+### User Management
+- Secure authentication with password hashing
+- Admin controls for system configuration
 
-### Radarr
-![radarr in progress size](images/radarrinprogsize.png)
-![radarr in progress list](images/radarrinproglist.png)
+## Requirements
 
-### sonarr
-![sonarr in progress size](images/sonarrinprogsize.png)
-![sonarr in progress list](images/sonarrinproglist.png)
+Before using JF-Resolve, you need:
 
-### jellyfin
-![Jellyfin in progress Library](images/jellyfininprog.png)
-*Started at 10:24am and current screenshots taken at 10:40am. Metadata are not completely loaded yet
+1. A running Jellyfin server instance
+2. A TMDB API key for content discovery and metadata
+3. A Debrid provider acount / subscription
+4. A Stremio addon manifest URL configured for your debrid service
+5. Python 3.10 or higher installed on your system
 
-## Pros and Cons of using `jf-resolve`
+## Installation
 
-### Pros
-* **Reduced Wait Time:** Media items can be played almost immediately once they appear in Jellyfin.
-* **Significant Space Savings:** Since you're streaming rather than storing files locally, your local storage footprint is dramatically reduced. For example, 14 movie requests via Jellyseerr resulted in a total library size of only 248KB.
+### Setting Up the Application
 
-### Cons
-* **Subtitles Variability:** Subtitles may or may not work depending on the media source. Using an Open Subtitles plugin in Jellyfin might help resolve this.
-* **On-the-fly Transcoding:** Media requiring transcoding will be transcoded each time it's played, as the file isn't hosted locally.
-* **Limited Compatibility with Existing Arr Stacks:** It may not be fully compatible with an already extensively configured Radarr/Sonarr setup.
-* **Duplicated Media:** In some cases, media is duplicated from having multiple media sources.
+1. Clone or download the project to your preferred location
 
-## Stack Used
+2. Create and activate a Python virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Linux/Mac
+   venv\Scripts\activate     # On Windows
+   ```
 
-`jf-resolve` is designed to work with the following applications:
-* Jellyfin
-* Jellyseerr
-* Radarr
-* Sonarr
-* Prowlarr
+3. Install required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-**Note on Jellyseerr Aggression:** While you can set Jellyseerr's aggression to a high number, it's generally better to keep it low (below 5 if possible). High aggression can lead to scraping numerous unnecessary items. Manual requests made through Jellyseerr will still be processed as usual, and your library will grow organically over time.
+4. Start both servers using the included script:
+   ```bash
+   python scripts/run.py
+   ```
 
-## High-Level Overview of `jf-resolve`
+5. Access the web interface at `http://<jf-resolve's ip>:8765`
 
-The entire `jf-resolve` system is Python-based, requiring **Python, Pip, and Docker** for a successful setup. A **Real-Debrid subscription and API key** are also compulsory. The installer guides you through the necessary steps.
+### Initial Configuration
 
-Here's how the system works:
+When you first access the application, you will need to:
 
-1.  **Querying Media:** The `jf-resolve` controller calls your Jellyseerr backend to query for movies and TV shows, based on your configured aggression level.
-2.  **Requesting Media:** Jellyseerr then sends these requests to either Radarr (for movies) or Sonarr/Prowlarr (for TV shows).
-3.  **Torrent/Magnet Processing:** The torrent or magnet files are loaded.
-4.  **Real-Debrid Integration:** The `jf-resolve` watchdog detects these files and makes a request to your Real-Debrid account using your API key.
-5.  **Link Generation & Jellyfin Integration:** Real-Debrid generates a streamable link, which is then appended to a "dummy" streamable file and added to your Jellyfin library.
-6.  **Link Refreshing:** The watchdog currently refreshes these Real-Debrid links. The current refresh interval is set to 30 days due to uncertainty about their actual expiration time.
+1. Create an administrator account with username and password
+2. Enter your TMDB API key
+3. Configure your Jellyfin server URL
+4. Set the library path where STRM files will be created
+5. Add your Stremio addon manifest URL
 
-* **Movie Sorting:** Movies are sorted into appropriate movie libraries.
-* **TV Series Updates:** TV series are sorted and updated in conjunction with Sonarr when new episodes are added or existing ones are updated.
-* **Quality:** The quality of your results will depend on the quality of your indexers. Media quality is also determined by your default resolution set in Jellyseerr. For instance, if you set 1080p as default, Jellyseerr will request 1080p media files. You can change this in Jellyseerr settings if file sizes become too large (e.g., some 1080p movies can be as large as 16GB). While transcoding is useful for local media to reduce file sizes, `jf-resolve` currently doesn't address this for streamed content.
+All configuration can be done through the Settings page in the web interface.
 
-**Customizing Jellyfin:** If you're not using Jellyfin themes but want to customize your web client, check out [ElegantFin](https://github.com/lscambo13/ElegantFin/releases) or [JellyfinMediaBar](https://github.com/MakD/Jellyfin-Media-Bar)
+## How to Use
 
-**Credits:**
-All credit goes to the owners of the original projects and the teams behind Jellyfin, Jellyseerr, Radarr, Sonarr, and Prowlarr. Their work makes this possible. Special thanks also to Automation Avenue for their arr compose file, which was instrumental in setting up this project.
+### Adding Content to Your Library
 
-## Setup Guide
-### Important: Docker is needed for this to work. If you do not have docker setup on your machine, please install it first
-To set up `jf-resolve`, you have two options:
+1. Navigate to the home page or search page
+2. Browse trending content or search for specific titles
+3. Click on any item to view information
+4. Select which quality versions you want (you can choose multiple)
+5. Click "Add to Library" to create the STRM files
+6. Wait for Jellyfin to scan the library (about 30 seconds)
+7. Start watching in Jellyfin
 
-### Option 1: Using the Installer Script (Recommended)
+### Managing TV Shows
 
-1.  Clone or download the `jf-resolve` project.
-2.  Navigate to the project folder in your terminal.
-3.  Run `installer.py`. This script should automate most of the setup and start the controller.
+When you add a TV show:
+- All current episodes are added automatically
+- User can configure the system to periodically check for new episodes
+- New episodes are added to your library when detected
+- You can manually refresh a show to check for updates
 
-### Option 2: Manual Setup
+### Removing Content
 
-This option is not needed if you use `installer.py`.
+To remove items from your library:
+1. Go to the Library page
+2. Find the item you want to remove
+3. Click the delete button
+4. Confirm the deletion
+5. STRM files are automatically removed from disk
 
-1.  **Environment File Configuration:**
-    * Open the `example.env` file.
-    * Update the `PATH` variable to specify the desired directory where all media and container volumes will be mapped.
-    * Rename `example.env` to `.env`.
-2.  **Real-Debrid API Key:**
-    * Go to Real-Debrid, obtain your API key, and paste it into the `REALDEBRID_API_KEY` line in your `.env` file.
-3.  **Docker Compose Review:**
-    * Review the `compose` file and modify it to your liking if necessary.
-    * If no modifications are needed, run the following command to start your stack:
-        ```bash
-        docker compose up -d
-        ```
-4.  **Permissions (Linux/Mac Only):**
-    * For Linux and Macs, the folders created by Docker Compose might be owned by the `root` user, preventing containers from accessing volume binds.
-    * **Fix 1 (Recommended):** Manually create the folders as structured in your `.env` file *before* running `docker compose up -d`. This prevents Docker from recreating them with root ownership.
-    * **Fix 2:** After the containers are up, you can run the `chown` command to change the owner from `root` to your user ID and group ID.
-5.  **Configure Stack Tools:**
-    * After bringing the containers up, configure each of your stack tools (Jellyfin, Jellyseerr, Radarr, Sonarr, Prowlarr) individually. Some instructions on how to do this can be found in the `instructions.txt` file within the project.
-6.  **Jellyseerr API Key:**
-    * After completing step 5, paste the API key for your Jellyseerr instance into the `JELLYSEERR_API_KEY` line in your `.env` file.
-    * Save and close your `.env` file.
-7.  **Configuration File:**
-    * Open the `example.config.ini` file.
-    * Configure it as desired, referring to the hints provided for each option.
-    * Save the file as `config.ini` and close it.
-8.  **Run Controller:**
-    * In your terminal, run the following command:
-        ```bash
-        python controller.py --initiate
-        ```
-    * For Linux/Unix, you can add `nohup` before the command if you want it to run in the background (e.g., `nohup python controller.py --initiate &`).
+### Configuring Stream Resolution
 
-**Troubleshooting:**
-* If your media is not populated on Jellyfin, rescan your library within Jellyfin.
-* To reduce server load and improve performance, consider adjusting or reducing quality profiles in Radarr and Sonarr. Very large files (e.g., 20GB remuxes) can lead to extended loading times. A helpful guide for setting up quality profiles can be found here: [Trashguides - Radarr Quality Profiles](https://trash-guides.info/Radarr/radarr-setup-quality-profiles/)
+The application includes intelligent failover logic:
+- When you start playback, it fetches available streams
+- If a stream fails, it waits 45 seconds to allow buffering (configurable)
+- After the grace period, it automatically tries the next stream
+- If playback succeeds, it resets to the preferred stream after 2 minutes
+
+
+### Automatic Library Population
+
+You can configure the application to automatically add content:
+1. Go to Settings and enable automatic population
+2. Select sources (trending movies, popular TV shows, etc.)
+3. Set how often to check for new content
+4. The system will add new items based on your preferences
+
+## Understanding STRM Files
+
+STRM files are simple text files containing a URL. When Jellyfin plays an STRM file, it requests the URL and plays the resulting stream.
+
+JF-Resolve organizes these files in standard Jellyfin folder structures:
+
+For movies:
+```
+Movies/
+  Movie Title (2024)/
+    Movie Title (2024) - 1080p.strm
+    Movie Title (2024) - 4K.strm
+```
+
+For TV shows:
+```
+TV Shows/
+  Show Title (2024)/
+    Season 01/
+      S01E01 - 1080p.strm
+      S01E02 - 1080p.strm
+    Season 02/
+      S02E01 - 1080p.strm
+```
+
+Each STRM file points to the stream resolution server, which handles finding and redirecting to the actual playable stream.
+
+## Stremio Addon Configuration
+
+The application works with Stremio addons that support your debrid service. Common examples include Torrentio, which integrates with Real-Debrid and AllDebrid.
+
+An example addon manifest URL looks like:
+```
+stremio://torrentio.strem.fun/providers=yts,eztv,rarbg,1337x,thepiratebay,kickasstorrents,torrentgalaxy,magnetdl,horriblesubs,nyaasi,tokyotosho,anidex|qualityfilter=brremux,scr,cam|limit=1|debridoptions=nodownloadlinks,nocatalog|realdebrid=(input your real debrid key here with no brackets)/manifest.json
+```
+
+The addon must be configured with your debrid service API key. When JF-Resolve requests streams, the addon queries your debrid service for content and returns available streams.
+
+
+## Logs and Troubleshooting
+
+The application maintains detailed logs to help diagnose issues:
+
+- Info logs track normal operations and successful actions
+- Error logs capture failures and exceptions
+- Stream logs specifically track stream resolution for debugging playback issues
+
+You can view logs through the web interface or access them directly in the logs directory.
+
+### Common Issues
+
+**STRM files not appearing in Jellyfin:**
+- Verify the library path is correct in Settings
+- Ensure Jellyfin has read access to the path
+- Trigger a manual library scan in Jellyfin
+- Check that automatic scanning is enabled
+
+**No streams available:**
+- Verify your Stremio addon URL is correct
+- Ensure your debrid service account is active
+- Check that the content is cached on your debrid service
+- Try different quality options
+
+**Streams not playing:**
+- Check stream logs for detailed error messages
+- Verify Jellyfin can reach the stream server
+- Ensure the stream server is running on port 8766
+- Test the stream URL directly in a browser
+
+**Content not found:**
+- Verify the item has an IMDB ID in TMDB
+- Some content may not be available through your addon
+- Try searching for alternative releases or versions
+
+
+## System Architecture
+
+JF-Resolve runs two separate servers:
+
+1. The main server on port 8765 handles the web interface, library management, and configuration
+2. The stream server on port 8766 handles stream resolution requests from Jellyfin
+
 
 ## Disclaimer
 
-This project is intended for **educational purposes only**. It was developed to explore the programmatic playback of non-local media through Jellyfin, integrating a debrid service and the common "Arr" stack. While it was a fun experiment, it is provided as-is, and others are welcome to modify or use it for their own educational purposes.
+This project is intended for educational purposes to explore programmatic media playback integration with Jellyfin and debrid services. It is provided as-is for personal use and learning.
 
-`jf-resolve` was primarily designed for **Linux machines**. While it might work on other platforms (like Windows), compatibility is not guaranteed, and thorough testing for errors on other platforms has not been performed. Error fixes will be addressed as time permits.
+The application was designed primarily for Linux systems. While it may work on other platforms, compatibility is not guaranteed. Users should ensure they comply with all applicable terms of service for TMDB, Jellyfin, Stremio, and their debrid service provider.
 
-## Updates
-This is the last update coming to this I think, since it has been replaced with [jfresolve](https://github.com/vicking20/jfresolve)
-
-## Update 27-10-25
-- Added standalone python script for managing and updating jf.resolve, when there are minor updates that dont break things, the script jf_manager.py can be triggered and it will kill instances of jf resolve and run it again.
-- Added new requirement "psutil" to requirements for getting process id when shuutting down old jf resolve process
-- Improved series detection by filtering out some language naming schemes
-- For this update, you may need to backup your .env, config.ini files and your arr path folders, then redownload the project, and restore the files there, you could also set up the process again from scratch, it depends. This time, there is an updater, it should make the process slightly more polished and for subsequent updates, you can run the jf_updater.py and that possibly should update the process, and restart it. (Note: This update my fail, they were not tested on my machine because I'm not actively using the project, if it fails, please open an issue, and itll be... resolved...)
-- For the updater, you need to have git installed and setup on your machine... If not, updating would need you to download the project and replace all existing files, except your .env, config.ini and arr path folder
+Version 2.0.0
