@@ -12,6 +12,8 @@ JF-Resolve is a web-based application that bridges Jellyfin media server with Re
   </a>
 </p>
 
+For an integrated experience, you can instead use the plugin directly with Jellyfin: [**jfresolve**](https://github.com/vicking20/jfresolve).
+
 ### JF-Resolve
 ![JF-Resolve](images/jfresolvesetup.png)
 ### Discover
