@@ -1,0 +1,347 @@
+{% extends "base.html" %} {% block title %}Search - JF-Resolve{% endblock %} {%
+block content %}
+<script>
+    if (!window.isAuthenticated()) {
+        window.location.href = "/login";
+    }
+</script>
+<div x-data="searchPage()">
+    <h1 class="text-3xl font-bold mb-6">Search</h1>
+
+    <div class="form-control mb-6">
+        <input
+            type="text"
+            x-model="query"
+            @input.debounce.500ms="search()"
+            placeholder="Search for movies and TV shows..."
+            class="input input-bordered w-full"
+        />
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <template x-for="item in results" :key="item.tmdb_id">
+            <div class="media-card cursor-pointer" @click="showDetail(item)">
+                <div class="card bg-base-100 shadow-xl">
+                    <figure>
+                        <img
+                            :src="getPosterUrl(item.poster_path)"
+                            :alt="item.title"
+                            class="w-full h-72 object-cover"
+                        />
+                    </figure>
+                    <div class="card-body p-3">
+                        <h3 class="card-title text-sm" x-text="item.title"></h3>
+                        <p class="text-xs opacity-70" x-text="item.year"></p>
+                        <div
+                            class="badge badge-sm"
+                            :class="item.in_library ? 'badge-success' : 'badge-ghost'"
+                            x-text="item.in_library ? 'In Library' : 'Not Added'"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div
+        x-show="results.length === 0 && query.length > 0"
+        class="text-center text-gray-500 mt-8"
+    >
+        No results found
+    </div>
+
+    <!-- Detail Modal (same as discover) -->
+    <div
+        class="modal"
+        :class="selectedItem ? 'modal-open' : ''"
+        @click.self="selectedItem = null"
+    >
+        <div class="modal-box max-w-3xl" x-show="selectedItem">
+            <button
+                class="btn btn-sm btn-circle absolute right-2 top-2"
+                @click="selectedItem = null"
+            >
+                ✕
+            </button>
+            <template x-if="selectedItem">
+                <div>
+                    <h3
+                        class="font-bold text-2xl mb-2"
+                        x-text="selectedItem.title"
+                    ></h3>
+                    <p
+                        class="text-sm opacity-70 mb-4"
+                        x-text="selectedItem.year"
+                    ></p>
+                    <p class="mb-4" x-text="selectedItem.overview"></p>
+
+                    <div
+                        class="form-control"
+                        x-show="!selectedItem.in_library && selectedItem.media_type === 'movie'"
+                    >
+                        <label class="label"
+                            ><span class="label-text font-semibold"
+                                >Quality Versions</span
+                            ></label
+                        >
+                        <div class="flex gap-2 mb-4">
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="4k"
+                                    x-model="selectedQualities"
+                                />
+                                <span>4K</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="1080p"
+                                    x-model="selectedQualities"
+                                />
+                                <span>1080p</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="720p"
+                                    x-model="selectedQualities"
+                                />
+                                <span>720p</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="unknown"
+                                    x-model="selectedQualities"
+                                />
+                                <span>Any (Unknown)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div
+                        x-show="!selectedItem.in_library && selectedItem.media_type === 'tv'"
+                    >
+                        <div class="divider">Library Sync</div>
+                        <p class="text-sm opacity-70 mb-4">
+                            Adding this series will create a single .strm file
+                            per episode. The resolution will be determined by
+                            your global quality preference.
+                        </p>
+                    </div>
+
+                    <div class="modal-action">
+                        <button class="btn" @click="selectedItem = null">
+                            Close
+                        </button>
+                        <button
+                            class="btn btn-primary"
+                            @click="addToLibrary()"
+                            :disabled="adding || selectedItem.in_library"
+                            x-show="!selectedItem.in_library"
+                        >
+                            <span x-show="!adding">Add to Library</span>
+                            <span
+                                x-show="adding"
+                                class="loading loading-spinner"
+                            ></span>
+                        </button>
+                        <span
+                            class="badge badge-success"
+                            x-show="selectedItem.in_library"
+                            >Already in Library</span
+                        >
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div
+        class="modal"
+        :class="showSuccessModal ? 'modal-open' : ''"
+        @click.self="showSuccessModal = false"
+    >
+        <div class="modal-box text-center">
+            <div class="flex justify-center mb-4">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-16 w-16 text-success"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                </svg>
+            </div>
+            <h3 class="font-bold text-2xl mb-2">Success!</h3>
+            <p class="mb-6" x-text="successMessage"></p>
+            <div class="modal-action justify-center">
+                <button
+                    class="btn btn-primary"
+                    @click="showSuccessModal = false"
+                >
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Generic Modal -->
+    <div
+        class="modal"
+        :class="modal.isOpen ? 'modal-open' : ''"
+        @click.self="closeModal()"
+    >
+        <div class="modal-box">
+            <h3 class="font-bold text-lg" x-text="modal.title"></h3>
+            <p class="py-4" x-text="modal.message"></p>
+            <div class="modal-action">
+                <button class="btn btn-primary" @click="closeModal()">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function searchPage() {
+        return {
+            query: "",
+            results: [],
+            selectedItem: null,
+            selectedQualities: ["1080p"],
+            adding: false,
+            // Modal State
+            modal: {
+                isOpen: false,
+                type: "alert",
+                title: "",
+                message: "",
+                confirmLabel: "OK",
+            },
+
+            async search() {
+                if (this.query.length < 2) {
+                    this.results = [];
+                    return;
+                }
+
+                const response = await fetch(
+                    `/api/search/multi?query=${encodeURIComponent(this.query)}`,
+                );
+                const data = await response.json();
+                this.results = data.results;
+            },
+
+            getPosterUrl(path) {
+                return path
+                    ? `https://image.tmdb.org/t/p/w500${path}`
+                    : "/static/placeholder.png";
+            },
+
+            showDetail(item) {
+                this.selectedItem = item;
+                this.selectedQualities = ["1080p"];
+            },
+
+            showAlert(title, message) {
+                this.modal = {
+                    isOpen: true,
+                    type: "alert",
+                    title,
+                    message,
+                    confirmLabel: "OK",
+                };
+            },
+
+            closeModal() {
+                this.modal.isOpen = false;
+            },
+
+            async showDetail(item) {
+                this.selectedItem = item;
+                if (item.media_type === "movie") {
+                    const settings = await fetch("/api/settings/").then((r) =>
+                        r.json(),
+                    );
+                    this.selectedQualities = settings.settings
+                        .quality_versions || ["1080p"];
+                } else {
+                    this.selectedQualities = ["auto"];
+                }
+            },
+
+            async addToLibrary() {
+                if (
+                    this.selectedItem.media_type === "movie" &&
+                    this.selectedQualities.length === 0
+                ) {
+                    this.showAlert(
+                        "Validation Error",
+                        "Please select at least one quality version for the movie.",
+                    );
+                    return;
+                }
+
+                const qualities =
+                    this.selectedItem.media_type === "tv"
+                        ? ["auto"]
+                        : this.selectedQualities;
+
+                this.adding = true;
+                try {
+                    const response = await fetch("/api/library/add", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            tmdb_id: this.selectedItem.tmdb_id,
+                            media_type: this.selectedItem.media_type,
+                            quality_versions: qualities,
+                            added_via: "search",
+                        }),
+                    });
+
+                    if (response.ok) {
+                        const itemTitle = this.selectedItem.title;
+                        this.selectedItem.in_library = true;
+                        this.successMessage = `"${itemTitle}" has been added to your library!`;
+                        this.selectedItem = null;
+                        this.showSuccessModal = true;
+                        await this.search();
+                    } else {
+                        const error = await response.json();
+                        this.showAlert("Error", "Error: " + error.detail);
+                    }
+                } catch (e) {
+                    this.showAlert(
+                        "Error",
+                        "Failed to add to library: " + e.message,
+                    );
+                } finally {
+                    this.adding = false;
+                }
+            },
+        };
+    }
+</script>
+{% endblock %}

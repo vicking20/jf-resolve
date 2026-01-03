@@ -1,0 +1,1523 @@
+{% extends "base.html" %} {% block title %}Settings - JF-Resolve{% endblock %}
+{% block content %}
+<script>
+    if (!window.isAuthenticated()) {
+        window.location.href = "/login";
+    }
+</script>
+<div x-data="settingsPage()">
+    <h1 class="text-3xl font-bold mb-6">Settings</h1>
+    <div
+        class="tabs tabs-boxed mb-6 overflow-x-auto flex-nowrap w-full justify-start md:justify-center bg-transparent"
+    >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'general' ? 'tab-active' : ''"
+            @click="tab = 'general'"
+            >General</a
+        >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'paths' ? 'tab-active' : ''"
+            @click="tab = 'paths'"
+            >Paths</a
+        >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'quality' ? 'tab-active' : ''"
+            @click="tab = 'quality'"
+            >Quality</a
+        >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'populate' ? 'tab-active' : ''"
+            @click="tab = 'populate'"
+            >Populate</a
+        >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'advanced' ? 'tab-active' : ''"
+            @click="tab = 'advanced'"
+            >Advanced</a
+        >
+        <a
+            class="tab flex-shrink-0"
+            :class="tab === 'security' ? 'tab-active' : ''"
+            @click="tab = 'security'"
+            >Security</a
+        >
+    </div>
+    <div x-show="tab === 'general'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">General Settings</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">TMDB API Key</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.tmdb_api_key"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Stremio Manifest URL</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.stremio_manifest_url"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Jellyfin Server URL</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.jellyfin_server_url"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Main API URL (Port 8765)</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.jfresolve_server_url"
+                        class="input input-bordered"
+                        placeholder="http://localhost:8765"
+                    />
+                    <label class="label"
+                        ><span class="label-text-alt text-info">
+                            This is the URL where the main JF-Resolve dashboard
+                            is accessible.
+                        </span></label
+                    >
+                </div>
+
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text"
+                            >Streaming Server URL (Port 8766)</span
+                        >
+                        <div
+                            class="tooltip tooltip-left"
+                            data-tip="Using 127.0.0.1 or the local ip addressis recommended when Jellyfin and JF-Resolve are on the same machine."
+                        >
+                            <span class="badge badge-sm badge-info cursor-help"
+                                >?</span
+                            >
+                        </div>
+                    </label>
+                    <div class="flex gap-2">
+                        <input
+                            type="text"
+                            x-model="settings.stream_server_url"
+                            class="input input-bordered flex-1"
+                            placeholder="Default: http://127.0.0.1:8766"
+                        />
+                        <button
+                            @click="testStreamConnection()"
+                            class="btn btn-outline"
+                            :disabled="testingConnection"
+                        >
+                            <span x-show="!testingConnection">Test</span>
+                            <span
+                                x-show="testingConnection"
+                                class="loading loading-spinner loading-xs"
+                            ></span>
+                        </button>
+                    </div>
+                    <div
+                        x-show="testResults"
+                        class="mt-2 text-xs space-y-1 p-2 bg-base-200 rounded-lg border border-white/5"
+                        x-cloak
+                    >
+                        <div class="flex items-center gap-2">
+                            <span
+                                :class="testResults.localhost.status === 'ok' ? 'text-success' : 'text-error'"
+                                >●</span
+                            >
+                            <span class="opacity-70">Local (127.0.0.1):</span>
+                            <span
+                                class="font-mono"
+                                x-text="testResults.localhost.status === 'ok' ? 'Connected' : 'Refused'"
+                            ></span>
+                        </div>
+                        <template x-if="testResults.external.url">
+                            <div class="flex items-center gap-2">
+                                <span
+                                    :class="testResults.external.status === 'ok' ? 'text-success' : 'text-error'"
+                                    >●</span
+                                >
+                                <span class="opacity-70">External:</span>
+                                <span
+                                    class="font-mono"
+                                    x-text="testResults.external.status === 'ok' ? 'Connected' : 'Refused'"
+                                ></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'paths'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Library Paths</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Movie Library Path (Discover/Trending)</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.jellyfin_movie_path"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >TV Shows Library Path (Discover/Trending)</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.jellyfin_tv_path"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-semibold">
+                            Use Separate Anime Paths
+                        </span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.use_separate_anime_paths"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt">
+                            Enable if you want anime content in separate folders
+                            <br />Note: You must manually create anime libraries
+                            in Jellyfin first
+                        </span>
+                    </label>
+                </div>
+
+                <div
+                    x-show="settings.use_separate_anime_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text"
+                            >Anime Movies Library Path</span
+                        >
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.anime_movie_path"
+                        class="input input-bordered"
+                        placeholder="/anime-movies"
+                    />
+                </div>
+
+                <div
+                    x-show="settings.use_separate_anime_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text"
+                            >Anime Series Library Path</span
+                        >
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.anime_tv_path"
+                        class="input input-bordered"
+                        placeholder="/anime-series"
+                    />
+                </div>
+
+                <div class="divider mt-8">Search Library Paths</div>
+
+                <div class="alert alert-info mb-4">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        class="stroke-current shrink-0 w-6 h-6"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        ></path>
+                    </svg>
+                    <span class="text-sm"
+                        >Items added from the Search page can be stored in
+                        separate paths from Discover items</span
+                    >
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-semibold">
+                            Use Separate Paths for Search Items
+                        </span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.use_separate_search_paths"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div
+                    x-show="settings.use_separate_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text">Search Movie Path</span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.search_movie_path"
+                        class="input input-bordered"
+                        placeholder="Leave empty to use main movie path"
+                    />
+                </div>
+
+                <div
+                    x-show="settings.use_separate_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text">Search TV Shows Path</span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.search_tv_path"
+                        class="input input-bordered"
+                        placeholder="Leave empty to use main TV path"
+                    />
+                </div>
+
+                <div class="divider mt-8">Jellyfin Integration</div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-semibold">
+                            Trigger Jellyfin Library Scan
+                        </span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.trigger_jellyfin_scan"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt">
+                            <p>
+                                Automatically trigger Jellyfin to scan library
+                                after adding content.
+                            </p>
+                        </span>
+                    </label>
+
+                    <div
+                        class="alert alert-warning mt-2 py-2 text-xs flex items-start gap-2 shadow-sm"
+                        x-show="settings.trigger_jellyfin_scan"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="stroke-current shrink-0 h-4 w-4 mt-0.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                        </svg>
+                        <span>
+                            <strong>Warning:</strong> Frequent scans can slow
+                            down the server or potentially cause database issues
+                            if many items (especially series) are added in rapid
+                            succession. Enable with caution.
+                        </span>
+                    </div>
+
+                    <div
+                        class="mt-4"
+                        x-show="settings.jellyfin_server_url && settings.jellyfin_api_key"
+                    >
+                        <button
+                            @click="triggerManualScan()"
+                            class="btn btn-sm btn-outline btn-warning gap-2"
+                            :disabled="scanning"
+                        >
+                            <span class="flex" x-show="!scanning">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                    />
+                                </svg>
+                                Trigger Manual Scan Now
+                            </span>
+                            <span
+                                x-show="scanning"
+                                class="loading loading-spinner loading-xs"
+                            ></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div
+                    class="form-control mt-4"
+                    x-show="settings.trigger_jellyfin_scan || (settings.jellyfin_server_url && settings.jellyfin_api_key)"
+                >
+                    <label class="label">
+                        <span class="label-text">Jellyfin API Key</span>
+                    </label>
+                    <input
+                        type="password"
+                        x-model="settings.jellyfin_api_key"
+                        class="input input-bordered"
+                        placeholder="Enter your Jellyfin API key"
+                    />
+                </div>
+
+                <div
+                    x-show="settings.use_separate_anime_paths"
+                    class="form-control mt-6"
+                >
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-semibold">
+                            Use Separate Anime Search Path
+                        </span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.use_separate_anime_search_paths"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt">
+                            Enable if anime search items should go to anime
+                            folders instead of regular folders
+                        </span>
+                    </label>
+                </div>
+
+                <div
+                    x-show="settings.use_separate_anime_paths && settings.use_separate_anime_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text">Anime Movie Search Path</span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.anime_search_movie_path"
+                        class="input input-bordered"
+                        placeholder="/anime-movies-search"
+                    />
+                </div>
+
+                <div
+                    x-show="settings.use_separate_anime_paths && settings.use_separate_anime_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text">Anime Series Search Path</span>
+                    </label>
+                    <input
+                        type="text"
+                        x-model="settings.anime_search_tv_path"
+                        class="input input-bordered"
+                        placeholder="/anime-series-search"
+                    />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'quality'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Quality Settings</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text font-semibold"
+                            >Default Movie Quality Versions (More options can
+                            slow process down)</span
+                        >
+                    </label>
+                    <div class="flex gap-4 mb-4">
+                        <label class="cursor-pointer flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                value="4k"
+                                :checked="settings.quality_versions?.includes('4k')"
+                                @change="toggleQuality('4k')"
+                                class="checkbox checkbox-sm"
+                            />
+                            <span>4K</span>
+                        </label>
+                        <label class="cursor-pointer flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                value="1080p"
+                                :checked="settings.quality_versions?.includes('1080p')"
+                                @change="toggleQuality('1080p')"
+                                class="checkbox checkbox-sm"
+                            />
+                            <span>1080p</span>
+                        </label>
+                        <label class="cursor-pointer flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                value="720p"
+                                :checked="settings.quality_versions?.includes('720p')"
+                                @change="toggleQuality('720p')"
+                                class="checkbox checkbox-sm"
+                            />
+                            <span>720p</span>
+                        </label>
+                        <label class="cursor-pointer flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                value="unknown"
+                                :checked="settings.quality_versions?.includes('unknown')"
+                                @change="toggleQuality('unknown')"
+                                class="checkbox checkbox-sm"
+                            />
+                            <span>Unknown/Any</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="divider">Series Quality</div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold"
+                            >Series Quality Preference</span
+                        >
+                    </label>
+                    <select
+                        x-model="settings.series_preferred_quality"
+                        class="select select-bordered w-full max-w-xs"
+                    >
+                        <option value="4k">4K (Ultra HD)</option>
+                        <option value="1080p">1080p (Full HD)</option>
+                        <option value="720p">720p (HD)</option>
+                        <option value="480p">480p (SD)</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt opacity-70">
+                            Movies use the versions selected above (multiple
+                            files). Series create ONE file and use this
+                            preference at playback time.
+                        </span>
+                    </label>
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text">Enable Quality Fallback</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.quality_fallback_enabled"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'populate'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Auto Populate Settings</h2>
+                <p class="text-sm opacity-70 mb-4">
+                    Automatically add trending/popular content to your library.
+                </p>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-bold"
+                            >Enable Auto Populate</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.auto_populate_enabled"
+                            class="checkbox checkbox-primary"
+                        />
+                    </label>
+                </div>
+
+                <div
+                    x-show="settings.auto_populate_enabled"
+                    class="space-y-4 mt-4 border-l-2 border-base-300 pl-4"
+                >
+                    <div class="form-control">
+                        <label class="label"
+                            ><span class="label-text font-semibold"
+                                >Sources to Populate From</span
+                            ></label
+                        >
+                        <div class="flex flex-wrap gap-4">
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="trending"
+                                    :checked="settings.populate_sources?.includes('trending')"
+                                    @change="toggleSource('trending')"
+                                    class="checkbox"
+                                />
+                                <span>Trending</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="popular"
+                                    :checked="settings.populate_sources?.includes('popular')"
+                                    @change="toggleSource('popular')"
+                                    class="checkbox"
+                                />
+                                <span>Popular</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="top_rated"
+                                    :checked="settings.populate_sources?.includes('top_rated')"
+                                    @change="toggleSource('top_rated')"
+                                    class="checkbox"
+                                />
+                                <span>Top Rated</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label"
+                            ><span class="label-text"
+                                >Default Quality for Auto-populated
+                                Content</span
+                            ></label
+                        >
+                        <div class="flex flex-wrap gap-4">
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="4K"
+                                    :checked="settings.populate_default_qualities?.includes('4K')"
+                                    @change="togglePopulateQuality('4K')"
+                                    class="checkbox"
+                                />
+                                <span>4K</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="1080p"
+                                    :checked="settings.populate_default_qualities?.includes('1080p')"
+                                    @change="togglePopulateQuality('1080p')"
+                                    class="checkbox"
+                                />
+                                <span>1080p</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="720p"
+                                    :checked="settings.populate_default_qualities?.includes('720p')"
+                                    @change="togglePopulateQuality('720p')"
+                                    class="checkbox"
+                                />
+                                <span>720p</span>
+                            </label>
+                            <label
+                                class="cursor-pointer flex items-center gap-2"
+                            >
+                                <input
+                                    type="checkbox"
+                                    value="unknown"
+                                    :checked="settings.populate_default_qualities?.includes('unknown')"
+                                    @change="togglePopulateQuality('unknown')"
+                                    class="checkbox"
+                                />
+                                <span>Unknown/Any</span>
+                            </label>
+                        </div>
+                        <label class="label"
+                            ><span class="label-text-alt"
+                                >Select which quality versions to create for
+                                auto-populated items</span
+                            ></label
+                        >
+                        <label class="label"
+                            ><span class="label-text-alt"
+                                >More options can slow process down</span
+                            ></label
+                        >
+                    </div>
+
+                    <div class="form-control w-full max-w-xs">
+                        <label class="label"
+                            ><span class="label-text"
+                                >Run Frequency</span
+                            ></label
+                        >
+                        <select
+                            class="select select-bordered"
+                            x-model="settings.populate_frequency"
+                        >
+                            <option value="daily">Daily</option>
+                            <option value="3days">Every 3 Days</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="form-control w-full max-w-xs">
+                        <label class="label"
+                            ><span class="label-text"
+                                >Items Per Run</span
+                            ></label
+                        >
+                        <input
+                            type="number"
+                            x-model.number="settings.populate_limit"
+                            class="input input-bordered"
+                            placeholder="e.g. 5"
+                        />
+                        <label class="label"
+                            ><span class="label-text-alt"
+                                >Max items to add each time the job runs</span
+                            ></label
+                        >
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label"
+                            ><span class="label-text"
+                                >Excluded TMDB IDs</span
+                            ></label
+                        >
+                        <textarea
+                            x-model="settings.populate_excluded_ids"
+                            class="textarea textarea-bordered h-24"
+                            placeholder="Comma separated IDs, e.g. 12345, 67890"
+                        ></textarea>
+                    </div>
+
+                    <div class="divider">Manual Actions</div>
+                    <div class="flex gap-2">
+                        <button
+                            @click="triggerAutoPopulate()"
+                            class="btn btn-sm btn-outline btn-primary gap-2"
+                            :disabled="populating"
+                        >
+                            <span
+                                x-show="!populating"
+                                class="flex items-center gap-2"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M17 14l-5-5m0 0l-5 5m5-5v12"
+                                    />
+                                </svg>
+                                Populate Now
+                            </span>
+                            <span
+                                x-show="populating"
+                                class="loading loading-spinner loading-xs"
+                            ></span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <h3 class="font-bold text-lg">Series Updates</h3>
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text font-bold"
+                            >Enable Series Updates</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.series_update_enabled"
+                            class="checkbox checkbox-primary"
+                        />
+                    </label>
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >Check for new episodes of existing series</span
+                        ></label
+                    >
+                </div>
+
+                <div x-show="settings.series_update_enabled" class="space-y-4">
+                    <div class="form-control w-full max-w-xs mt-2 pl-4">
+                        <label class="label"
+                            ><span class="label-text"
+                                >Update Frequency</span
+                            ></label
+                        >
+                        <select
+                            class="select select-bordered"
+                            x-model="settings.series_update_frequency"
+                        >
+                            <option value="daily">Daily</option>
+                            <option value="3days">Every 3 Days</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </div>
+
+                    <div class="pl-4">
+                        <button
+                            @click="triggerSeriesUpdate()"
+                            class="btn btn-sm btn-outline btn-info gap-2"
+                            :disabled="updatingSeries"
+                        >
+                            <span
+                                x-show="!updatingSeries"
+                                class="flex items-center gap-2"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                    />
+                                </svg>
+                                Update All Series Now
+                            </span>
+                            <span
+                                x-show="updatingSeries"
+                                class="loading loading-spinner loading-xs"
+                            ></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'advanced'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Advanced Settings</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Failover Grace Period (seconds)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.failover_grace_seconds"
+                        class="input input-bordered"
+                    />
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >Wait this long before trying next stream (allows
+                            buffering)</span
+                        ></label
+                    >
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Failover Reset Window (seconds)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.failover_window_seconds"
+                        class="input input-bordered"
+                    />
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >After this time, assume success and reset to first
+                            stream</span
+                        ></label
+                    >
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text"
+                            >Filter Unreleased Content</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.filter_unreleased"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.filter_unreleased">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Release Buffer Days</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.release_buffer_days"
+                        class="input input-bordered"
+                    />
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >Only show content released X days ago</span
+                        ></label
+                    >
+                </div>
+
+                <div class="form-control">
+                    <label class="label cursor-pointer">
+                        <span class="label-text">Filter Adult Content</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.filter_adult_content"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >Hide adult/NSFW content from discover and search
+                            results</span
+                        ></label
+                    >
+                </div>
+
+                <div class="divider mt-8">Server Binding</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold"
+                                >Main API Host</span
+                            >
+                        </label>
+                        <input
+                            type="text"
+                            x-model="settings.HOST"
+                            class="input input-bordered"
+                            placeholder="0.0.0.0"
+                        />
+                        <label class="label">
+                            <span class="label-text-alt text-info"
+                                >Default: 0.0.0.0 (All interfaces)</span
+                            >
+                        </label>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold"
+                                >Streaming Host</span
+                            >
+                        </label>
+                        <input
+                            type="text"
+                            x-model="settings.STREAM_HOST"
+                            class="input input-bordered"
+                            placeholder="0.0.0.0"
+                        />
+                        <label class="label">
+                            <span class="label-text-alt text-info"
+                                >Default: 0.0.0.0 (All interfaces)</span
+                            >
+                        </label>
+                    </div>
+                </div>
+
+                <div class="divider mt-8">System Control</div>
+                <div
+                    class="bg-warning/10 border border-warning/20 rounded-lg p-4"
+                >
+                    <h3
+                        class="font-bold text-warning mb-2 flex items-center gap-2"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                        Restart Required
+                    </h3>
+                    <p class="text-xs mb-4">
+                        Changes to Host Binding or Security Settings require a
+                        server restart to take effect.
+                    </p>
+                    <button
+                        @click="confirmRestart()"
+                        class="btn btn-warning btn-outline btn-sm"
+                        :disabled="restarting"
+                    >
+                        <span x-show="!restarting">Restart Server</span>
+                        <span
+                            x-show="restarting"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'security'" x-cloak>
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Security Configuration</h2>
+
+                <div class="divider mt-8">Change Password</div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Current Password</span>
+                    </label>
+                    <input
+                        type="password"
+                        x-model="passwordChange.currentPassword"
+                        class="input input-bordered"
+                        placeholder="Enter current password"
+                    />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">New Password</span>
+                    </label>
+                    <input
+                        type="password"
+                        x-model="passwordChange.newPassword"
+                        class="input input-bordered"
+                        placeholder="Enter new password (min 6 characters)"
+                    />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Confirm New Password</span>
+                    </label>
+                    <input
+                        type="password"
+                        x-model="passwordChange.confirmPassword"
+                        class="input input-bordered"
+                        placeholder="Confirm new password"
+                    />
+                </div>
+
+                <div
+                    class="alert alert-error mt-4"
+                    x-show="passwordError"
+                    x-cloak
+                >
+                    <span x-text="passwordError"></span>
+                </div>
+
+                <div
+                    class="alert alert-success mt-4"
+                    x-show="passwordSuccess"
+                    x-cloak
+                >
+                    <span x-text="passwordSuccess"></span>
+                </div>
+
+                <button
+                    @click="changePassword()"
+                    class="btn btn-primary mt-4"
+                    :disabled="changingPassword"
+                >
+                    <span x-show="!changingPassword">Change Password</span>
+                    <span
+                        x-show="changingPassword"
+                        class="loading loading-spinner"
+                    ></span>
+                </button>
+
+                <div class="divider mt-8">Server Ports</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="stat bg-base-200 rounded-lg">
+                        <div class="stat-title">Main API</div>
+                        <div class="stat-value text-lg">8765</div>
+                        <div class="stat-desc">Authentication Required</div>
+                    </div>
+                    <div class="stat bg-base-200 rounded-lg">
+                        <div class="stat-title">Streaming</div>
+                        <div class="stat-value text-lg">8766</div>
+                        <div class="stat-desc text-warning">Localhost Only</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end mt-6">
+        <button
+            @click="saveSettings()"
+            class="btn btn-primary"
+            :disabled="saving"
+        >
+            <span x-show="!saving">Save Settings</span>
+            <span x-show="saving" class="loading loading-spinner"></span>
+        </button>
+    </div>
+    <!-- Generic Modal -->
+    <div
+        class="modal"
+        :class="modal.isOpen ? 'modal-open' : ''"
+        @click.self="closeModal()"
+    >
+        <div class="modal-box">
+            <h3 class="font-bold text-lg" x-text="modal.title"></h3>
+            <p class="py-4" x-text="modal.message"></p>
+            <div class="modal-action">
+                <button class="btn btn-primary" @click="closeModal()">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function settingsPage() {
+        return {
+            tab: "general",
+            settings: {},
+            saving: false,
+            passwordChange: {
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            },
+            changingPassword: false,
+            passwordSuccess: "",
+            scanning: false,
+            testingConnection: false,
+            testResults: null,
+            restarting: false,
+            populating: false,
+            updatingSeries: false,
+            modal: {
+                isOpen: false,
+                type: "alert",
+                title: "",
+                message: "",
+                confirmLabel: "OK",
+            },
+
+            async init() {
+                await this.loadSettings();
+            },
+
+            showAlert(title, message) {
+                this.modal = {
+                    isOpen: true,
+                    type: "alert",
+                    title,
+                    message,
+                    confirmLabel: "OK",
+                };
+            },
+
+            closeModal() {
+                this.modal.isOpen = false;
+            },
+
+            async loadSettings() {
+                const response = await fetch("/api/settings/");
+                const data = await response.json();
+                this.settings = data.settings || {};
+
+                if (!this.settings.quality_versions)
+                    this.settings.quality_versions = ["1080p"];
+                if (!this.settings.series_preferred_quality)
+                    this.settings.series_preferred_quality = "1080p";
+                if (this.settings.quality_fallback_enabled === undefined)
+                    this.settings.quality_fallback_enabled = true;
+                if (!this.settings.failover_grace_seconds)
+                    this.settings.failover_grace_seconds = 45;
+                if (!this.settings.failover_window_seconds)
+                    this.settings.failover_window_seconds = 120;
+                if (this.settings.filter_unreleased === undefined)
+                    this.settings.filter_unreleased = true;
+                if (!this.settings.release_buffer_days)
+                    this.settings.release_buffer_days = 7;
+                if (this.settings.filter_adult_content === undefined)
+                    this.settings.filter_adult_content = true;
+
+                // Anime settings defaults
+                if (this.settings.use_separate_anime_paths === undefined)
+                    this.settings.use_separate_anime_paths = false;
+                if (!this.settings.anime_movie_path)
+                    this.settings.anime_movie_path = "/anime-movies";
+                if (!this.settings.anime_tv_path)
+                    this.settings.anime_tv_path = "/anime-series";
+                if (this.settings.use_separate_anime_search_paths === undefined)
+                    this.settings.use_separate_anime_search_paths = false;
+                if (!this.settings.anime_search_movie_path)
+                    this.settings.anime_search_movie_path =
+                        "/anime-movies-search";
+                if (!this.settings.anime_search_tv_path)
+                    this.settings.anime_search_tv_path = "/anime-series-search";
+
+                // Server binding defaults
+                if (!this.settings.HOST) this.settings.HOST = "0.0.0.0";
+                if (!this.settings.STREAM_HOST)
+                    this.settings.STREAM_HOST = "0.0.0.0";
+
+                // Auto Populate Defaults
+                if (this.settings.auto_populate_enabled === undefined)
+                    this.settings.auto_populate_enabled = false;
+                if (
+                    !this.settings.populate_sources ||
+                    !Array.isArray(this.settings.populate_sources)
+                ) {
+                    this.settings.populate_sources = ["popular"];
+                }
+                if (!this.settings.populate_frequency)
+                    this.settings.populate_frequency = "daily";
+                if (!this.settings.populate_limit)
+                    this.settings.populate_limit = 5;
+                if (this.settings.populate_excluded_ids === undefined)
+                    this.settings.populate_excluded_ids = "";
+                if (
+                    !this.settings.populate_default_qualities ||
+                    !Array.isArray(this.settings.populate_default_qualities)
+                ) {
+                    this.settings.populate_default_qualities = ["1080p"];
+                }
+
+                // Series Update Defaults
+                if (this.settings.series_update_enabled === undefined)
+                    this.settings.series_update_enabled = false;
+                if (!this.settings.series_update_frequency)
+                    this.settings.series_update_frequency = "daily";
+            },
+
+            toggleQuality(quality) {
+                if (!this.settings.quality_versions)
+                    this.settings.quality_versions = [];
+                const index = this.settings.quality_versions.indexOf(quality);
+                if (index > -1) {
+                    this.settings.quality_versions.splice(index, 1);
+                } else {
+                    this.settings.quality_versions.push(quality);
+                }
+            },
+
+            toggleSource(source) {
+                if (!this.settings.populate_sources)
+                    this.settings.populate_sources = [];
+                const index = this.settings.populate_sources.indexOf(source);
+                if (index > -1) {
+                    this.settings.populate_sources.splice(index, 1);
+                } else {
+                    this.settings.populate_sources.push(source);
+                }
+            },
+
+            togglePopulateQuality(quality) {
+                if (!this.settings.populate_default_qualities)
+                    this.settings.populate_default_qualities = [];
+                const index =
+                    this.settings.populate_default_qualities.indexOf(quality);
+                if (index > -1) {
+                    this.settings.populate_default_qualities.splice(index, 1);
+                } else {
+                    this.settings.populate_default_qualities.push(quality);
+                }
+            },
+
+            async saveSettings() {
+                this.saving = true;
+                try {
+                    const response = await fetch("/api/settings/", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ settings: this.settings }),
+                    });
+
+                    if (response.ok) {
+                        this.showAlert(
+                            "Success",
+                            "Settings saved successfully!",
+                        );
+                    } else {
+                        throw new Error("Failed to save settings");
+                    }
+                } catch (e) {
+                    this.showAlert("Error", "Error: " + e.message);
+                } finally {
+                    this.saving = false;
+                }
+            },
+
+            async testStreamConnection() {
+                this.testingConnection = true;
+                this.testResults = null;
+                try {
+                    const response = await fetch(
+                        "/api/system/test-stream-connection",
+                        {
+                            method: "POST",
+                        },
+                    );
+                    this.testResults = await response.json();
+                } catch (e) {
+                    this.showAlert(
+                        "Error",
+                        "Failed to test connection: " + e.message,
+                    );
+                } finally {
+                    this.testingConnection = false;
+                }
+            },
+
+            async triggerManualScan() {
+                this.scanning = true;
+                try {
+                    const response = await fetch("/api/library/scan", {
+                        method: "POST",
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.showAlert("Success", data.message);
+                    } else {
+                        throw new Error(
+                            data.detail || "Failed to trigger scan",
+                        );
+                    }
+                } catch (e) {
+                    this.showAlert("Error", e.message);
+                } finally {
+                    this.scanning = false;
+                }
+            },
+
+            confirmRestart() {
+                if (
+                    confirm(
+                        "Are you sure you want to restart the server? This will temporarily disconnect all users and stop active streams.",
+                    )
+                ) {
+                    this.restartServer();
+                }
+            },
+
+            async restartServer() {
+                this.restarting = true;
+                try {
+                    const response = await fetch("/api/system/restart", {
+                        method: "POST",
+                    });
+                    const data = await response.json();
+                    this.showAlert("Restarting", data.message);
+
+                    // Wait and reload
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 5000);
+                } catch (e) {
+                    this.showAlert(
+                        "Error",
+                        "Failed to trigger restart: " + e.message,
+                    );
+                    this.restarting = false;
+                }
+            },
+
+            async changePassword() {
+                this.passwordError = "";
+                this.passwordSuccess = "";
+
+                // Validate inputs
+                if (!this.passwordChange.currentPassword) {
+                    this.passwordError = "Please enter your current password";
+                    return;
+                }
+
+                if (!this.passwordChange.newPassword) {
+                    this.passwordError = "Please enter a new password";
+                    return;
+                }
+
+                if (this.passwordChange.newPassword.length < 6) {
+                    this.passwordError =
+                        "New password must be at least 6 characters";
+                    return;
+                }
+
+                if (
+                    this.passwordChange.newPassword !==
+                    this.passwordChange.confirmPassword
+                ) {
+                    this.passwordError = "New passwords do not match";
+                    return;
+                }
+
+                this.changingPassword = true;
+                try {
+                    const response = await fetch("/api/auth/change-password", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            current_password:
+                                this.passwordChange.currentPassword,
+                            new_password: this.passwordChange.newPassword,
+                        }),
+                    });
+
+                    if (response.ok) {
+                        this.passwordSuccess = "Password changed successfully!";
+                        // Clear form
+                        this.passwordChange.currentPassword = "";
+                        this.passwordChange.newPassword = "";
+                        this.passwordChange.confirmPassword = "";
+                    } else {
+                        const data = await response.json();
+                        throw new Error(
+                            data.detail || "Failed to change password",
+                        );
+                    }
+                } catch (e) {
+                    this.passwordError = e.message;
+                } finally {
+                    this.changingPassword = false;
+                }
+            },
+
+            async triggerAutoPopulate() {
+                this.populating = true;
+                try {
+                    const response = await fetch("/api/system/populate/run", {
+                        method: "POST",
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.showAlert("Success", data.message);
+                    } else {
+                        throw new Error(
+                            data.detail || "Failed to trigger auto-populate",
+                        );
+                    }
+                } catch (e) {
+                    this.showAlert("Error", e.message);
+                } finally {
+                    this.populating = false;
+                }
+            },
+
+            async triggerSeriesUpdate() {
+                this.updatingSeries = true;
+                try {
+                    const response = await fetch("/api/system/series/update", {
+                        method: "POST",
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        this.showAlert("Success", data.message);
+                    } else {
+                        throw new Error(
+                            data.detail || "Failed to trigger series update",
+                        );
+                    }
+                } catch (e) {
+                    this.showAlert("Error", e.message);
+                } finally {
+                    this.updatingSeries = false;
+                }
+            },
+        };
+    }
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends "base.html" %} {% block title %}Library - JF-Resolve{% endblock %} {%
+block content %}
+<script>
+    // Protect this page - require authentication
+    if (!window.isAuthenticated()) {
+        window.location.href = "/login";
+    }
+</script>
+<div x-data="libraryPage()">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Library</h1>
+        <button @click="confirmPurge()" class="btn btn-error btn-sm">
+            Purge All [jfr] Items
+        </button>
+    </div>
+
+    <!-- Mobile View (Cards) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:hidden mb-8">
+        <template x-for="item in items" :key="item.id">
+            <div class="card bg-base-100 shadow-xl border border-white/5">
+                <figure class="px-4 pt-4">
+                    <img :src="getPosterUrl(item.poster_path)" :alt="item.title"
+                        class="rounded-xl w-full h-64 object-cover object-top" />
+                </figure>
+                <div class="card-body p-4 items-center text-center">
+                    <h2 class="card-title text-lg" x-text="item.title"></h2>
+                    <div class="flex flex-wrap justify-center gap-2 my-1">
+                        <span class="badge" :class="item.media_type === 'movie' ? 'badge-info' : 'badge-success'"
+                            x-text="item.media_type"></span>
+                        <span class="badge badge-ghost" x-text="item.year"></span>
+                    </div>
+
+                    <div class="text-xs opacity-50 break-all mb-2" x-text="item.folder_path"></div>
+
+                    <div class="flex flex-wrap justify-center gap-1 mb-4">
+                        <template x-for="quality in getQualities(item)" :key="quality">
+                            <span class="badge badge-sm badge-outline" x-text="quality"></span>
+                        </template>
+                    </div>
+
+                    <div class="card-actions w-full justify-center border-t border-base-200 pt-4">
+                        <button @click="refreshItem(item)" class="btn btn-sm btn-primary flex-1"
+                            x-show="item.media_type === 'tv'" :disabled="refreshing === item.id">
+                            <span x-show="refreshing !== item.id">Refresh</span>
+                            <span x-show="refreshing === item.id" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                        <button @click="removeItem(item)" class="btn btn-sm btn-error flex-1"
+                            :disabled="deleting === item.id">
+                            <span x-show="deleting !== item.id">Delete</span>
+                            <span x-show="deleting === item.id" class="loading loading-spinner loading-xs"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Desktop View (Table) -->
+    <div class="overflow-x-auto hidden lg:block">
+        <table class="table table-zebra w-full">
+            <thead>
+                <tr>
+                    <th>Poster</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Year</th>
+                    <th>Quality Versions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="item in items" :key="item.id">
+                    <tr>
+                        <td>
+                            <img :src="getPosterUrl(item.poster_path)" :alt="item.title"
+                                class="w-16 h-24 object-cover rounded" />
+                        </td>
+                        <td>
+                            <div class="font-bold" x-text="item.title"></div>
+                            <div class="text-sm opacity-50" x-text="item.folder_path"></div>
+                        </td>
+                        <td>
+                            <span class="badge" :class="item.media_type === 'movie' ? 'badge-info' : 'badge-success'"
+                                x-text="item.media_type"></span>
+                        </td>
+                        <td x-text="item.year"></td>
+                        <td>
+                            <div class="flex gap-1">
+                                <template x-for="quality in getQualities(item)" :key="quality">
+                                    <span class="badge badge-sm" x-text="quality"></span>
+                                </template>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="flex gap-2">
+                                <button @click="refreshItem(item)" class="btn btn-xs btn-primary"
+                                    x-show="item.media_type === 'tv'" :disabled="refreshing === item.id">
+                                    <span x-show="refreshing !== item.id">Refresh</span>
+                                    <span x-show="refreshing === item.id"
+                                        class="loading loading-spinner loading-xs"></span>
+                                </button>
+                                <button @click="removeItem(item)" class="btn btn-xs btn-error"
+                                    :disabled="deleting === item.id">
+                                    <span x-show="deleting !== item.id">Delete</span>
+                                    <span x-show="deleting === item.id"
+                                        class="loading loading-spinner loading-xs"></span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <div x-show="items.length === 0" class="text-center text-gray-500 mt-8">
+        No items in library
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mt-8 bg-base-100/30 p-4 rounded-xl backdrop-blur-sm border border-white/5"
+        x-show="totalItems > 0">
+        <div class="flex items-center gap-4">
+            <span class="text-sm opacity-70">
+                Showing <span class="font-bold text-primary" x-text="((page - 1) * pageSize) + 1"></span> to
+                <span class="font-bold text-primary" x-text="Math.min(page * pageSize, totalItems)"></span> of
+                <span class="font-bold text-primary" x-text="totalItems"></span> items
+            </span>
+
+            <select x-model="pageSize" @change="page = 1; loadItems()" class="select select-bordered select-sm">
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+            </select>
+        </div>
+
+        <div class="join">
+            <button class="join-item btn btn-sm" @click="changePage(page - 1)" :disabled="page <= 1">«</button>
+
+            <template x-for="p in getPageNumbers()" :key="p">
+                <button class="join-item btn btn-sm"
+                    :class="p === page ? 'btn-primary' : (p === '...' ? 'btn-disabled' : '')"
+                    @click="p !== '...' && changePage(p)" x-text="p">
+                </button>
+            </template>
+
+            <button class="join-item btn btn-sm" @click="changePage(page + 1)" :disabled="page >= totalPages">»</button>
+        </div>
+    </div>
+
+    <!-- Generic Modal -->
+    <div class="modal" :class="modal.isOpen ? 'modal-open' : ''" @click.self="closeModal()">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg" x-text="modal.title"></h3>
+            <p class="py-4" x-text="modal.message"></p>
+            <div class="modal-action">
+                <!-- Helper text for destructive actions -->
+                <button class="btn" @click="closeModal()">Cancel</button>
+                <button class="btn" :class="modal.isDestructive ? 'btn-error' : 'btn-primary'" @click="handleConfirm()"
+                    x-show="modal.type === 'confirm'" x-text="modal.confirmLabel">
+                </button>
+                <button class="btn btn-primary" @click="closeModal()" x-show="modal.type === 'alert'">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function libraryPage() {
+        return {
+            items: [],
+            totalItems: 0,
+            page: 1,
+            pageSize: 20,
+            totalPages: 1,
+            refreshing: null,
+            deleting: null,
+            // Modal State
+            modal: {
+                isOpen: false,
+                type: 'alert', // 'alert' or 'confirm'
+                title: '',
+                message: '',
+                confirmLabel: 'Confirm',
+                isDestructive: false,
+                confirmCallback: null
+            },
+
+            async init() {
+                await this.loadItems();
+            },
+
+            showConfirm(title, message, callback, isDestructive = false, confirmLabel = 'Confirm') {
+                this.modal = {
+                    isOpen: true,
+                    type: 'confirm',
+                    title,
+                    message,
+                    confirmLabel,
+                    isDestructive,
+                    confirmCallback: callback
+                };
+            },
+
+            showAlert(title, message) {
+                this.modal = {
+                    isOpen: true,
+                    type: 'alert',
+                    title,
+                    message,
+                    confirmLabel: 'OK',
+                    isDestructive: false,
+                    confirmCallback: null
+                };
+            },
+
+            closeModal() {
+                this.modal.isOpen = false;
+                this.modal.confirmCallback = null;
+            },
+
+            async handleConfirm() {
+                if (this.modal.confirmCallback) {
+                    await this.modal.confirmCallback();
+                }
+                this.closeModal();
+            },
+
+            async loadItems() {
+                try {
+                    const response = await fetch(`/api/library/items?page=${this.page}&limit=${this.pageSize}`);
+                    const data = await response.json();
+                    this.items = data.items;
+                    this.totalItems = data.total;
+                    this.totalPages = Math.ceil(this.totalItems / this.pageSize);
+
+                    // If current page is empty and not page 1, go back
+                    if (this.items.length === 0 && this.page > 1) {
+                        this.page--;
+                        await this.loadItems();
+                    }
+                } catch (e) {
+                    console.error("Failed to load library items:", e);
+                }
+            },
+
+            changePage(newPage) {
+                if (newPage >= 1 && newPage <= this.totalPages) {
+                    this.page = newPage;
+                    this.loadItems();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            },
+
+            getPageNumbers() {
+                const pages = [];
+                const radius = 2;
+
+                for (let i = 1; i <= this.totalPages; i++) {
+                    if (
+                        i === 1 ||
+                        i === this.totalPages ||
+                        (i >= this.page - radius && i <= this.page + radius)
+                    ) {
+                        pages.push(i);
+                    } else if (
+                        i === this.page - radius - 1 ||
+                        i === this.page + radius + 1
+                    ) {
+                        pages.push('...');
+                    }
+                }
+
+                // Filter out repeated '...'
+                return pages.filter((v, i, a) => v !== '...' || a[i - 1] !== '...');
+            },
+
+            getPosterUrl(path) {
+                return path
+                    ? `https://image.tmdb.org/t/p/w500${path}`
+                    : "/static/placeholder.png";
+            },
+
+            getQualities(item) {
+                try {
+                    return JSON.parse(item.quality_versions || "[]");
+                } catch {
+                    return [];
+                }
+            },
+
+            refreshItem(item) {
+                this.showConfirm(
+                    'Refresh Item',
+                    `Refresh "${item.title}"? This will check for new episodes.`,
+                    async () => {
+                        this.refreshing = item.id;
+                        try {
+                            const response = await fetch(
+                                `/api/library/refresh/${item.id}`,
+                                { method: "POST" },
+                            );
+                            const data = await response.json();
+                            this.showAlert('Success', data.message);
+                            await this.loadItems();
+                        } catch (e) {
+                            this.showAlert('Error', "Failed to refresh: " + e.message);
+                        } finally {
+                            this.refreshing = null;
+                        }
+                    },
+                    false, // Not destructive
+                    'Refresh'
+                );
+            },
+
+            removeItem(item) {
+                this.showConfirm(
+                    'Delete Item',
+                    `Delete "${item.title}" from library? This will remove all STRM files and metadata.`,
+                    async () => {
+                        this.deleting = item.id;
+                        try {
+                            await fetch(`/api/library/items/${item.id}`, {
+                                method: "DELETE",
+                            });
+                            await this.loadItems();
+                        } catch (e) {
+                            this.showAlert('Error', "Failed to delete: " + e.message);
+                        } finally {
+                            this.deleting = null;
+                        }
+                    },
+                    true, // Destructive
+                    'Delete'
+                );
+            },
+
+            confirmPurge() {
+                this.showConfirm(
+                    'Purge Library',
+                    "Are you sure you want to delete ALL [jfr] items? This will delete all managed STRM files and cannot be undone.",
+                    async () => {
+                        try {
+                            const response = await fetch("/api/library/purge", {
+                                method: "POST",
+                            });
+                            const data = await response.json();
+                            this.showAlert('Success', data.message);
+                            await this.loadItems();
+                        } catch (e) {
+                            this.showAlert('Error', "Failed to purge: " + e.message);
+                        }
+                    },
+                    true, // Destructive
+                    'Purge All'
+                );
+            },
+        };
+    }
+</script>
+{% endblock %}

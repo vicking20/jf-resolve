@@ -1,0 +1,109 @@
+{% extends "base.html" %} {% block title %}Login - JF-Resolve{% endblock %} {%
+block navbar %}{% endblock %} {% block content %}
+<div class="min-h-screen flex items-center justify-center relative bg-black" x-data="loginPage()">
+    <!-- Cinematic Background -->
+    <div class="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
+        style="background-image: url('/static/setup-bg.png');">
+        <!-- Subtle purple hue overlay, no blur for sharpness -->
+        <div class="absolute inset-0 bg-purple-900/10"></div>
+    </div>
+
+    <!-- Login Card -->
+    <div class="card w-96 bg-base-100/60 backdrop-blur-md shadow-2xl z-10 border border-white/10">
+        <div class="card-body">
+            <div class="flex justify-center mb-6">
+                <div class="p-3 bg-primary/20 rounded-full ring-4 ring-primary/10">
+                    <img src="/static/jfresolve.png" alt="JF-Resolve" class="h-16 w-16 drop-shadow-lg" />
+                </div>
+            </div>
+            <h2 class="card-title justify-center text-2xl mb-4">
+                <span class="text-primary">JF</span>-Resolve Login
+            </h2>
+
+            <form @submit.prevent="login">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Username</span>
+                    </label>
+                    <input type="text" x-model="username" placeholder="Enter username" class="input input-bordered"
+                        required />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label">
+                        <span class="label-text">Password</span>
+                    </label>
+                    <input type="password" x-model="password" placeholder="Enter password" class="input input-bordered"
+                        required />
+                </div>
+
+                <div class="alert alert-error mt-4" x-show="error" x-cloak>
+                    <span x-text="error"></span>
+                </div>
+
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary" :disabled="loading">
+                        <span x-show="!loading">Login</span>
+                        <span x-show="loading" class="loading loading-spinner"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loginPage() {
+        return {
+            username: "",
+            password: "",
+            loading: false,
+            error: "",
+
+            async login() {
+                this.loading = true;
+                this.error = "";
+
+                try {
+                    const response = await fetch("/api/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            username: this.username,
+                            password: this.password,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.detail || "Login failed");
+                    }
+
+                    const data = await response.json();
+                    window.setAuthToken(data.access_token);
+                    window.location.href = "/";
+                } catch (e) {
+                    this.error = e.message;
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    }
+
+    // Check if setup is needed
+    fetch("/api/auth/status")
+        .then((r) => r.json())
+        .then((data) => {
+            if (data.setup_needed) {
+                window.location.href = "/setup";
+            }
+        });
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
+{% endblock %}

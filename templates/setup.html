@@ -1,0 +1,479 @@
+{% extends "base.html" %} {% block title %}Setup - JF-Resolve{% endblock %} {%
+block navbar %}{% endblock %} {% block content %}
+<div
+    class="min-h-screen flex items-center justify-center relative bg-black"
+    x-data="setupWizard()"
+>
+    <div
+        class="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
+        style="background-image: url(&quot;/static/setup-bg.png&quot;)"
+    >
+        <div class="absolute inset-0 bg-purple-900/10"></div>
+    </div>
+    <div
+        class="card w-full max-w-2xl bg-base-100/60 backdrop-blur-md shadow-2xl z-10 border border-white/10"
+    >
+        <div class="card-body">
+            <div class="flex justify-center mb-6">
+                <div
+                    class="p-3 bg-primary/20 rounded-full ring-4 ring-primary/10"
+                >
+                    <img
+                        src="/static/jfresolve.png"
+                        alt="JF-Resolve"
+                        class="h-16 w-16 drop-shadow-lg"
+                    />
+                </div>
+            </div>
+            <h2 class="card-title justify-center text-3xl mb-6">
+                <span class="text-primary">JF</span>-Resolve Setup
+            </h2>
+            <ul class="steps steps-vertical lg:steps-horizontal w-full mb-6">
+                <li class="step" :class="step >= 1 ? 'step-primary' : ''">
+                    Welcome
+                </li>
+                <li class="step" :class="step >= 2 ? 'step-primary' : ''">
+                    Admin Account
+                </li>
+                <li class="step" :class="step >= 3 ? 'step-primary' : ''">
+                    TMDB API
+                </li>
+                <li class="step" :class="step >= 4 ? 'step-primary' : ''">
+                    Stremio
+                </li>
+                <li class="step" :class="step >= 5 ? 'step-primary' : ''">
+                    Paths
+                </li>
+                <li class="step" :class="step >= 6 ? 'step-primary' : ''">
+                    Complete
+                </li>
+            </ul>
+            <div x-show="step === 1" x-cloak>
+                <h3 class="text-xl font-bold mb-4">Welcome to JF-Resolve!</h3>
+                <p class="mb-4">
+                    This wizard will help you configure JF-Resolve for first
+                    use.
+                </p>
+                <p class="mb-4">You'll need:</p>
+                <ul class="list-disc list-inside mb-4">
+                    <li>
+                        TMDB API key (get from
+                        <a
+                            href="https://www.themoviedb.org/settings/api"
+                            target="_blank"
+                            class="link link-primary"
+                            >themoviedb.org</a
+                        >)
+                    </li>
+                    <li>Stremio manifest URL</li>
+                    <li>Jellyfin library paths</li>
+                </ul>
+                <button @click="step++" class="btn btn-primary">
+                    Get Started
+                </button>
+            </div>
+            <div x-show="step === 2" x-cloak>
+                <h3 class="text-xl font-bold mb-4">Create Admin Account</h3>
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">Username</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.username"
+                        class="input input-bordered"
+                        required
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label"
+                        ><span class="label-text">Password</span></label
+                    >
+                    <input
+                        type="password"
+                        x-model="config.password"
+                        class="input input-bordered"
+                        required
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label"
+                        ><span class="label-text">Confirm Password</span></label
+                    >
+                    <input
+                        type="password"
+                        x-model="config.passwordConfirm"
+                        class="input input-bordered"
+                        required
+                    />
+                </div>
+                <div
+                    class="alert alert-error mt-4"
+                    x-show="error"
+                    x-text="error"
+                    x-cloak
+                ></div>
+                <div class="flex gap-2 mt-6">
+                    <button @click="step--" class="btn">Back</button>
+                    <button @click="validatePassword()" class="btn btn-primary">
+                        Next
+                    </button>
+                </div>
+            </div>
+            <div x-show="step === 3" x-cloak>
+                <h3 class="text-xl font-bold mb-4">TMDB API Configuration</h3>
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">TMDB API Key</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.tmdb_api_key"
+                        class="input input-bordered"
+                        required
+                    />
+                    <label class="label"
+                        ><span class="label-text-alt"
+                            >Get your API key from
+                            <a
+                                href="https://www.themoviedb.org/settings/api"
+                                target="_blank"
+                                class="link link-primary"
+                                >TMDB Settings</a
+                            ></span
+                        ></label
+                    >
+                </div>
+                <div class="flex gap-2 mt-6">
+                    <button @click="step--" class="btn">Back</button>
+                    <button @click="step++" class="btn btn-primary">
+                        Next
+                    </button>
+                </div>
+            </div>
+            <div x-show="step === 4" x-cloak>
+                <h3 class="text-xl font-bold mb-4">Stremio Manifest</h3>
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">Manifest URL</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.stremio_manifest_url"
+                        class="input input-bordered"
+                        placeholder="https://addon.example.com or stremio://..."
+                        required
+                    />
+                </div>
+                <div class="flex gap-2 mt-6">
+                    <button @click="step--" class="btn">Back</button>
+                    <button @click="step++" class="btn btn-primary">
+                        Next
+                    </button>
+                </div>
+            </div>
+            <div x-show="step === 5" x-cloak>
+                <h3 class="text-xl font-bold mb-4">Jellyfin Library Paths</h3>
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Movie Library Path (Discover/Trending)</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.jellyfin_movie_path"
+                        class="input input-bordered"
+                        placeholder="/movies"
+                        required
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label"
+                        ><span class="label-text"
+                            >TV Shows Library Path (Discover/Trending)</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.jellyfin_tv_path"
+                        class="input input-bordered"
+                        placeholder="/tv"
+                        required
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label cursor-pointer justify-start gap-2">
+                        <input
+                            type="checkbox"
+                            x-model="config.use_separate_search_paths"
+                            class="checkbox"
+                        />
+                        <span class="label-text"
+                            >Use separate paths for search items</span
+                        >
+                    </label>
+                </div>
+                <div
+                    x-show="config.use_separate_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label"
+                        ><span class="label-text"
+                            >Search Movie Path</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.search_movie_path"
+                        class="input input-bordered"
+                        placeholder="/movies-search (leave empty to use main path)"
+                    />
+                </div>
+                <div
+                    x-show="config.use_separate_search_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label"
+                        ><span class="label-text"
+                            >Search TV Shows Path</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.search_tv_path"
+                        class="input input-bordered"
+                        placeholder="/tv-search (leave empty to use main path)"
+                    />
+                </div>
+                <div class="form-control mt-6">
+                    <label class="label cursor-pointer justify-start gap-2">
+                        <input
+                            type="checkbox"
+                            x-model="config.use_separate_anime_paths"
+                            class="checkbox"
+                        />
+                        <span class="label-text font-semibold">
+                            Use Separate Anime Paths
+                        </span>
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt">
+                            Enable if you want anime content in separate folders
+                            <br />Note: You must manually create anime libraries
+                            in Jellyfin first
+                        </span>
+                    </label>
+                </div>
+                <div
+                    x-show="config.use_separate_anime_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text"
+                            >Anime Movies Library Path</span
+                        >
+                    </label>
+                    <input
+                        type="text"
+                        x-model="config.anime_movie_path"
+                        class="input input-bordered"
+                        placeholder="/anime-movies"
+                    />
+                </div>
+                <div
+                    x-show="config.use_separate_anime_paths"
+                    class="form-control mt-4"
+                >
+                    <label class="label">
+                        <span class="label-text"
+                            >Anime Series Library Path</span
+                        >
+                    </label>
+                    <input
+                        type="text"
+                        x-model="config.anime_tv_path"
+                        class="input input-bordered"
+                        placeholder="/anime-series"
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Jellyfin Server URL</span
+                        ></label
+                    >
+                    <input
+                        type="text"
+                        x-model="config.jellyfin_server_url"
+                        class="input input-bordered"
+                        placeholder="http://localhost:8096"
+                        required
+                    />
+                </div>
+                <div class="flex gap-2 mt-6">
+                    <button @click="step--" class="btn">Back</button>
+                    <button
+                        @click="complete()"
+                        class="btn btn-primary"
+                        :disabled="loading"
+                    >
+                        <span x-show="!loading">Complete Setup</span>
+                        <span
+                            x-show="loading"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+            <div x-show="step === 6" x-cloak>
+                <h3 class="text-xl font-bold mb-4">Setup Complete!</h3>
+                <p class="mb-4">
+                    JF-Resolve is ready to use. You are now logged in!
+                </p>
+                <div class="flex gap-2">
+                    <button
+                        @click="window.location.href='/'"
+                        class="btn btn-primary"
+                    >
+                        Go to Discover
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setupWizard() {
+        return {
+            step: 1,
+            loading: false,
+            error: "",
+            config: {
+                username: "",
+                password: "",
+                passwordConfirm: "",
+                tmdb_api_key: "",
+                stremio_manifest_url: "",
+                jellyfin_movie_path: "data/movies",
+                jellyfin_tv_path: "data/tvshows",
+                use_separate_search_paths: false,
+                search_movie_path: "data/moviessearch",
+                search_tv_path: "data/seriessearch",
+                jellyfin_server_url: "http://localhost:8096",
+                jfresolve_server_url: window.location.origin,
+                use_separate_anime_paths: false,
+                anime_movie_path: "data/anime-movies",
+                anime_tv_path: "data/anime-series",
+                quality_versions: ["1080p", "720p"],
+                series_preferred_quality: "1080p",
+                allowed_origins: "*",
+                jellyfin_cors_origins: "*",
+            },
+
+            validatePassword() {
+                if (this.config.password !== this.config.passwordConfirm) {
+                    this.error = "Passwords do not match";
+                    return;
+                }
+                if (this.config.password.length < 6) {
+                    this.error = "Password must be at least 6 characters";
+                    return;
+                }
+                this.error = "";
+                this.step++;
+            },
+
+            async complete() {
+                this.loading = true;
+                this.error = "";
+
+                try {
+                    // Create user
+                    const userResponse = await fetch("/api/auth/register", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            username: this.config.username,
+                            password: this.config.password,
+                        }),
+                    });
+
+                    if (!userResponse.ok) {
+                        throw new Error("Failed to create user");
+                    }
+
+                    // Login to get token
+                    const loginResponse = await fetch("/api/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            username: this.config.username,
+                            password: this.config.password,
+                        }),
+                    });
+
+                    if (!loginResponse.ok) {
+                        throw new Error("Failed to login");
+                    }
+
+                    const loginData = await loginResponse.json();
+                    window.setAuthToken(loginData.access_token);
+
+                    // Save settings
+                    const settingsResponse = await fetch("/api/settings/", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            settings: {
+                                tmdb_api_key: this.config.tmdb_api_key,
+                                stremio_manifest_url:
+                                    this.config.stremio_manifest_url,
+                                jellyfin_movie_path:
+                                    this.config.jellyfin_movie_path,
+                                jellyfin_tv_path: this.config.jellyfin_tv_path,
+                                use_separate_search_paths:
+                                    this.config.use_separate_search_paths,
+                                search_movie_path:
+                                    this.config.search_movie_path,
+                                search_tv_path: this.config.search_tv_path,
+                                jellyfin_server_url:
+                                    this.config.jellyfin_server_url,
+                                jfresolve_server_url:
+                                    this.config.jfresolve_server_url,
+                                use_separate_anime_paths:
+                                    this.config.use_separate_anime_paths,
+                                anime_movie_path: this.config.anime_movie_path,
+                                anime_tv_path: this.config.anime_tv_path,
+                                quality_versions: this.config.quality_versions,
+                                series_preferred_quality:
+                                    this.config.series_preferred_quality,
+                                allowed_origins: this.config.allowed_origins,
+                                jellyfin_cors_origins:
+                                    this.config.jellyfin_cors_origins,
+                            },
+                        }),
+                    });
+
+                    if (!settingsResponse.ok) {
+                        throw new Error("Failed to save settings");
+                    }
+
+                    this.step = 6;
+                } catch (e) {
+                    this.error = e.message;
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    }
+</script>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+</style>
+{% endblock %}

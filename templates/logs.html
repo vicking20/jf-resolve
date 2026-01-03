@@ -1,0 +1,99 @@
+{% extends "base.html" %} {% block title %}Logs - JF-Resolve{% endblock %} {%
+block content %}
+<script>
+    if (!window.isAuthenticated()) {
+        window.location.href = "/login";
+    }
+</script>
+<div x-data="logsPage()">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Logs</h1>
+        <button @click="downloadLogs()" class="btn btn-sm btn-primary">
+            Download Logs
+        </button>
+    </div>
+
+    <div class="tabs tabs-boxed mb-6">
+        <a
+            class="tab"
+            :class="logType === 'error' ? 'tab-active' : ''"
+            @click="changeLogType('error')"
+            >Errors</a
+        >
+        <a
+            class="tab"
+            :class="logType === 'info' ? 'tab-active' : ''"
+            @click="changeLogType('info')"
+            >Info</a
+        >
+        <a
+            class="tab"
+            :class="logType === 'stream' ? 'tab-active' : ''"
+            @click="changeLogType('stream')"
+            >Stream</a
+        >
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="flex justify-between items-center mb-4">
+                <h2
+                    class="card-title"
+                    x-text="`${logType.charAt(0).toUpperCase() + logType.slice(1)} Logs`"
+                ></h2>
+                <button @click="loadLogs()" class="btn btn-sm btn-ghost">
+                    Refresh
+                </button>
+            </div>
+
+            <div class="mockup-code h-96 overflow-y-auto">
+                <template x-for="(line, index) in logs" :key="index">
+                    <pre
+                        :data-prefix="index + 1"
+                    ><code x-text="line"></code></pre>
+                </template>
+            </div>
+
+            <div
+                x-show="logs.length === 0"
+                class="text-center text-gray-500 py-8"
+            >
+                No log entries
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function logsPage() {
+        return {
+            logType: "error",
+            logs: [],
+
+            async init() {
+                await this.loadLogs();
+            },
+
+            async changeLogType(type) {
+                this.logType = type;
+                await this.loadLogs();
+            },
+
+            async loadLogs() {
+                const response = await fetch(
+                    `/api/system/logs?type=${this.logType}&limit=100`,
+                );
+                const data = await response.json();
+                this.logs = data.lines;
+            },
+
+            async downloadLogs() {
+                window.open(
+                    `/api/system/logs/download?type=${this.logType}`,
+                    "_blank",
+                );
+            },
+        };
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{% block title %}JF-Resolve{% endblock %}</title>
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+        <link rel="icon" type="image/png" href="/static/jfresolve.png" />
+
+        <!-- Tailwind CSS + DaisyUI -->
+        <link
+            href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.tailwindcss.com"></script>
+
+        <!-- HTMX -->
+        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+        <!-- Alpine.js -->
+        <script
+            defer
+            src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"
+        ></script>
+
+        <script>
+            window.getAuthToken = function () {
+                return localStorage.getItem("jfr_token");
+            };
+
+            window.setAuthToken = function (token) {
+                localStorage.setItem("jfr_token", token);
+            };
+
+            window.clearAuthToken = function () {
+                localStorage.removeItem("jfr_token");
+            };
+
+            window.isTokenExpired = function (token) {
+                if (!token) return true;
+                try {
+                    const base64Url = token.split(".")[1];
+                    const base64 = base64Url
+                        .replace(/-/g, "+")
+                        .replace(/_/g, "/");
+                    const jsonPayload = decodeURIComponent(
+                        atob(base64)
+                            .split("")
+                            .map(function (c) {
+                                return (
+                                    "%" +
+                                    ("00" + c.charCodeAt(0).toString(16)).slice(
+                                        -2,
+                                    )
+                                );
+                            })
+                            .join(""),
+                    );
+
+                    const payload = JSON.parse(jsonPayload);
+                    const now = Math.floor(Date.now() / 1000);
+                    return payload.exp < now;
+                } catch (e) {
+                    return true;
+                }
+            };
+
+            window.isAuthenticated = function () {
+                const token = window.getAuthToken();
+                if (!token) return false;
+                if (window.isTokenExpired(token)) {
+                    window.clearAuthToken();
+                    return false;
+                }
+                return true;
+            };
+
+            // Early Path Protection
+            (function () {
+                const path = window.location.pathname;
+                const publicPaths = ["/login", "/setup"];
+                if (!publicPaths.includes(path) && !window.isAuthenticated()) {
+                    window.location.href = "/login";
+                }
+            })();
+
+            // Add auth header to all fetch requests
+            const originalFetch = window.fetch;
+            window.fetch = async function (url, options = {}) {
+                const token = window.getAuthToken();
+                if (
+                    token &&
+                    !url.includes("/api/auth/login") &&
+                    !url.includes("/api/auth/register")
+                ) {
+                    options.headers = options.headers || {};
+                    options.headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                const response = await originalFetch(url, options);
+
+                // Handle unauthorized globally
+                if (
+                    response.status === 401 &&
+                    !url.includes("/api/auth/login")
+                ) {
+                    window.clearAuthToken();
+                    if (window.location.pathname !== "/login") {
+                        window.location.href = "/login";
+                    }
+                }
+
+                return response;
+            };
+        </script>
+
+        <style>
+            .media-card {
+                transition: transform 0.2s;
+            }
+
+            .media-card:hover {
+                transform: scale(1.05);
+            }
+
+            .carousel-container {
+                overflow-x: auto;
+                scrollbar-width: thin;
+            }
+
+            .carousel-container::-webkit-scrollbar {
+                height: 8px;
+            }
+
+            .carousel-container::-webkit-scrollbar-track {
+                background: #1f2937;
+            }
+
+            .carousel-container::-webkit-scrollbar-thumb {
+                background: #4b5563;
+                border-radius: 4px;
+            }
+        </style>
+
+        {% block extra_head %}{% endblock %}
+    </head>
+
+    <body
+        class="min-h-screen text-base-content overflow-x-hidden p-0 m-0"
+        x-data="{ backgroundImage: '' }"
+        @update-background.window="backgroundImage = $event.detail"
+    >
+        <div
+            class="fixed inset-0 -z-50 transition-opacity duration-700 ease-in-out"
+            x-show="backgroundImage"
+            x-transition:enter="opacity-0"
+            x-transition:enter-end="opacity-100"
+            :style="`background-image: url('${backgroundImage}'); background-size: cover; background-position: center; filter: blur(20px); transform: scale(1.1);`"
+        ></div>
+
+        <div
+            class="fixed inset-0 bg-black/60 -z-40"
+            x-show="backgroundImage"
+            x-transition.opacity.duration.700ms
+        ></div>
+
+        <div
+            class="fixed inset-0 bg-base-300 -z-50"
+            x-show="!backgroundImage"
+        ></div>
+
+        {% block navbar %}
+        <div
+            class="navbar bg-base-100/70 backdrop-blur-md w-[96%] max-w-[1700px] mx-auto mt-4 rounded-xl shadow-lg border border-white/10 z-50 transition-all duration-300 relative"
+        >
+            <!-- Navbar Start -->
+            <div class="navbar-start">
+                <a
+                    href="/"
+                    class="btn btn-ghost normal-case text-xl items-center gap-2"
+                >
+                    <img
+                        src="/static/jfresolve.png"
+                        alt="JF-Resolve"
+                        class="h-8 w-8"
+                    />
+                    <span><span class="text-primary">JF</span>-Resolve</span>
+                </a>
+            </div>
+
+            <!-- Navbar Center -->
+            <div class="navbar-center hidden lg:flex">
+                <ul class="menu menu-horizontal px-1">
+                    <li><a href="/">Discover</a></li>
+                    <li><a href="/search">Search</a></li>
+                    <li><a href="/library">Library</a></li>
+                    <li><a href="/settings">Settings</a></li>
+                    <li><a href="/logs">Logs</a></li>
+                </ul>
+            </div>
+
+            <!-- Navbar End -->
+            <div
+                class="navbar-end"
+                x-data="{ isAuth: window.isAuthenticated() }"
+            >
+                <!-- Desktop Logout -->
+                <button
+                    x-show="isAuth"
+                    @click="logout()"
+                    class="btn btn-ghost btn-sm hidden lg:flex"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                        />
+                    </svg>
+                    Logout
+                </button>
+                <a
+                    x-show="!isAuth"
+                    href="/login"
+                    class="btn btn-sm btn-primary hidden lg:flex"
+                    >Login</a
+                >
+
+                <!-- Mobile Hamburger (Right Side) -->
+                <details class="dropdown dropdown-end lg:hidden">
+                    <summary class="btn btn-ghost">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h8m-8 6h16"
+                            />
+                        </svg>
+                    </summary>
+                    <ul
+                        class="menu menu-sm dropdown-content mt-3 z-50 p-2 shadow bg-base-100/90 backdrop-blur-md rounded-box w-52 border border-white/10"
+                    >
+                        <li><a href="/">Discover</a></li>
+                        <li><a href="/search">Search</a></li>
+                        <li><a href="/library">Library</a></li>
+                        <li><a href="/settings">Settings</a></li>
+                        <li><a href="/logs">Logs</a></li>
+                        <div class="divider my-1"></div>
+                        <li x-show="isAuth"><a @click="logout()">Logout</a></li>
+                        <li x-show="!isAuth"><a href="/login">Login</a></li>
+                    </ul>
+                </details>
+            </div>
+        </div>
+
+        <script>
+            async function logout() {
+                try {
+                    await fetch("/api/auth/logout", { method: "POST" });
+                } catch (e) {
+                    console.error("Logout error:", e);
+                }
+                window.clearAuthToken();
+                window.location.href = "/login";
+            }
+        </script>
+        {% endblock %}
+
+        <main class="w-full max-w-[1700px] mx-auto px-2 lg:px-0 py-2">
+            {% block content %}{% endblock %}
+        </main>
+
+        {% block extra_scripts %}{% endblock %}
+    </body>
+</html>
