@@ -1,0 +1,19 @@
+name: "JF-Resolve"
+version: "2.0.0"
+slug: "jf-resolve"
+description: "Jellyfin Media Resolver with Real-Debrid/AllDebrid integration"
+url: "https://github.com/vicking20/jfresolve"
+startup: application
+boot: auto
+arch:
+  - aarch64
+  - amd64
+  - armv7
+ports:
+  8765/tcp: 8765
+  8766/tcp: 8766
+map:
+  - config:rw
+  - share:rw
+options: {}
+schema: {}
