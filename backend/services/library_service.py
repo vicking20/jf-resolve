@@ -528,7 +528,7 @@ class LibraryService:
                     # Targeted scan - only scan specific path (much faster)
                     response = await client.post(
                         f"{jellyfin_url}/Library/Media/Updated",
-                        headers={"X-Emby-Token": api_key},
+                        headers={"Authorization": f'MediaBrowser Token="{api_key}"'},
                         json={
                             "Updates": [
                                 {"Path": specific_path, "UpdateType": "Created"}
@@ -539,7 +539,7 @@ class LibraryService:
                     # Full library refresh (slower)
                     response = await client.post(
                         f"{jellyfin_url}/Library/Refresh",
-                        headers={"X-Emby-Token": api_key},
+                        headers={"Authorization": f'MediaBrowser Token="{api_key}"'},
                     )
 
                 response.raise_for_status()

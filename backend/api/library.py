@@ -180,7 +180,7 @@ async def trigger_manual_scan(
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{jellyfin_url}/Library/Refresh",
-                headers={"X-Emby-Token": jellyfin_key},
+                headers={"Authorization": f'MediaBrowser Token="{jellyfin_key}"'},
             )
             response.raise_for_status()
             return {"message": "Jellyfin library scan triggered successfully"}
