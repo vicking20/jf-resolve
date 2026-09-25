@@ -1,0 +1,21 @@
+# Builds the image locally and runs JF-Resolve. Start with: docker compose up -d --build
+#
+# Jellyfin / Hybrid mode: point these at folders your Jellyfin libraries read,
+# either here or in a .env file next to this one:
+#   JELLYFIN_MOVIES_DIR=/srv/jellyfin/strm/movies
+#   JELLYFIN_TV_DIR=/srv/jellyfin/strm/tv
+# Then in Settings set Movie directory to /strm/movies and Series directory to /strm/tv.
+services:
+  jf-resolve:
+    build: .
+    image: jf-resolve:local
+    container_name: jf-resolve
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./data:/app/data
+      - ./experimental/data:/app/experimental/data
+      - ./experimental/plugins:/app/experimental/plugins
+      - ${JELLYFIN_MOVIES_DIR:-./strm/movies}:/strm/movies
+      - ${JELLYFIN_TV_DIR:-./strm/tv}:/strm/tv

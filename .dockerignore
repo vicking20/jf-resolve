@@ -1,0 +1,14 @@
+.git
+.gitignore
+.run
+.env
+venv
+__pycache__
+*.pyc
+*.pyo
+*.log
+logs
+data
+experimental/data
+.DS_Store
+strm

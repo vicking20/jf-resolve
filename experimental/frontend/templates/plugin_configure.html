@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Configure {{ plugin.manifest.name }} - JF-Resolve{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto mt-4" x-data="pluginConfig('{{ plugin.id }}')">
+    <!-- Breadcrumbs -->
+    <div class="text-sm breadcrumbs mb-6">
+        <ul>
+            <li><a href="/settings">Settings</a></li>
+            <li><a href="/settings?tab=plugins">Plugins</a></li>
+            <li>Configure {{ plugin.manifest.name }}</li>
+        </ul>
+    </div>
+
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold mb-2">{{ plugin.manifest.name }}</h1>
+            <p class="text-base-content/60">Manage settings for this plugin</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/settings?tab=plugins" class="btn btn-ghost">Cancel</a>
+            <button @click="saveConfig()" class="btn btn-primary" :disabled="saving">
+                <span x-show="saving" class="loading loading-spinner loading-xs"></span>
+                Save Changes
+            </button>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Left: Plugin Info -->
+        <div class="md:col-span-1">
+            <div class="card bg-base-200 shadow-xl">
+                <div class="card-body">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="font-bold">{{ plugin.manifest.name }}</div>
+                            <div class="text-xs opacity-60">v{{ plugin.manifest.version }}</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <div class="opacity-50 mb-1">Author</div>
+                            <div>{{ plugin.manifest.author or "Unknown" }}</div>
+                        </div>
+                        <div>
+                            <div class="opacity-50 mb-1">Description</div>
+                            <div>{{ plugin.manifest.description or "No description provided." }}</div>
+                        </div>
+                        {% if plugin.manifest.homepage %}
+                        <div>
+                            <div class="opacity-50 mb-1">Homepage</div>
+                            <a href="{{ plugin.manifest.homepage }}" target="_blank"
+                                class="link link-primary break-all">{{ plugin.manifest.homepage }}</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Config UI -->
+        <div class="md:col-span-2">
+            <div class="card bg-base-200 shadow-xl overflow-visible">
+                <div class="card-body">
+                    <h2 class="card-title mb-4">Configuration</h2>
+
+                    <div id="plugin-ui-container" class="min-h-[200px]">
+                        <!-- Plugin HTML will be injected here -->
+                        <div x-show="loading" class="flex justify-center py-12">
+                            <span class="loading loading-spinner loading-lg text-primary"></span>
+                        </div>
+                        <div x-ref="uiContainer" x-show="!loading"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pages/plugin_configure.js"></script>
+{% endblock %}

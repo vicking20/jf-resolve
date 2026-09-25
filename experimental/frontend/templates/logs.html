@@ -1,0 +1,118 @@
+{% extends "base.html" %} {% block title %}Logs - JF-Resolve{% endblock %} {%
+block content %}
+
+<div x-data="logsPage">
+    <div class="flex justify-between items-center mb-6 mt-4">
+        <h1 class="text-3xl font-bold">Logs</h1>
+    </div>
+
+    <div class="tabs tabs-boxed mb-6">
+        <a class="tab" :class="logType === 'error' ? 'tab-active' : ''" @click="changeLogType('error')">Errors</a>
+        <a class="tab" :class="logType === 'info' ? 'tab-active' : ''" @click="changeLogType('info')">Info</a>
+        <a class="tab" :class="logType === 'stream' ? 'tab-active' : ''" @click="changeLogType('stream')">Stream</a>
+        <a class="tab" :class="logType === 'scan_jobs' ? 'tab-active' : ''" @click="changeLogType('scan_jobs')">Scan
+            Jobs</a>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <!-- Header with Refresh -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="card-title"
+                    x-text="logType === 'scan_jobs' ? 'Scan Jobs History' : `${logType.charAt(0).toUpperCase() + logType.slice(1)} Logs`">
+                </h2>
+                <div class="flex gap-2">
+                    <button @click="loadLogs()" class="btn btn-sm btn-ghost">
+                        Refresh
+                    </button>
+                    <button x-show="logType !== 'scan_jobs'" @click="downloadLogs()" class="btn btn-sm btn-primary">
+                        Download
+                    </button>
+                </div>
+            </div>
+
+            <!-- Standard Logs View -->
+            <div x-show="logType !== 'scan_jobs'">
+                <div class="mockup-code min-h-96 overflow-y-auto">
+                    <template x-if="logs.length > 0">
+                        <template x-for="(line, index) in logs" :key="index">
+                            <pre :data-prefix="index + 1"><code x-text="line"></code></pre>
+                        </template>
+                    </template>
+                    <div x-show="logs.length === 0" class="text-center text-gray-500 py-8">
+                        No log entries
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan Jobs View -->
+            <div x-show="logType === 'scan_jobs'" class="overflow-x-auto min-h-96">
+                <table class="table table-zebra w-full">
+                    <thead>
+                        <tr>
+                            <th>Job ID</th>
+                            <th>Status</th>
+                            <th>Files</th>
+                            <th>Changes</th>
+                            <th>Started</th>
+                            <th>Duration</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="job in scanJobs" :key="job.id">
+                            <tr>
+                                <td class="font-mono font-bold" x-text="`#${job.id}`"></td>
+                                <td>
+                                    <span class="badge" :class="{
+                                        'badge-info': job.status === 'running',
+                                        'badge-success': job.status === 'completed',
+                                        'badge-error': job.status === 'failed',
+                                        'badge-ghost': job.status === 'pending'
+                                    }" x-text="job.status"></span>
+                                    <div x-show="job.error_message" class="text-xs text-error mt-1 max-w-xs truncate"
+                                        x-text="job.error_message" :title="job.error_message"></div>
+                                </td>
+                                <td>
+                                    <div class="text-sm">
+                                        <span class="font-bold text-primary" x-text="job.processed_files"></span> /
+                                        <span x-text="job.total_files"></span>
+                                    </div>
+                                    <div class="text-[10px] opacity-50 uppercase tracking-tighter"
+                                        x-show="job.status === 'running'">In Progress</div>
+                                    <div class="text-[10px] text-error uppercase tracking-tighter"
+                                        x-show="job.status === 'failed'">Interrupted</div>
+                                </td>
+                                <td class="text-sm">
+                                    <div class="flex flex-col">
+                                        <span class="text-success" x-show="job.new_media_added > 0"
+                                            x-text="`+${job.new_media_added} new`"></span>
+                                        <span class="text-info" x-show="job.existing_media_updated > 0"
+                                            x-text="`${job.existing_media_updated} updated`"></span>
+                                        <span class="opacity-50"
+                                            x-show="job.new_media_added === 0 && job.existing_media_updated === 0">-</span>
+                                    </div>
+                                </td>
+                                <td class="text-sm opacity-70"
+                                    x-text="new Date(job.created_at || job.started_at).toLocaleString()"></td>
+                                <td class="text-sm opacity-70" x-text="calculateDuration(job)"></td>
+                                <td>
+                                    <button @click="cancelJob(job.id)"
+                                        x-show="job.status === 'pending' || job.status === 'running'"
+                                        class="btn btn-sm btn-error">Cancel</button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="scanJobs.length === 0">
+                            <td colspan="7" class="text-center py-8 opacity-50">No scan jobs found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pages/logs.js"></script>
+
+{% endblock %}
