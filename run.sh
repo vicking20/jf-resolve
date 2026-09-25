@@ -3,9 +3,9 @@
 # JF-Resolve background runner
 #
 # Usage:
-#   ./run.sh start   [normal|experimental]   # default: experimental
+#   ./run.sh start
 #   ./run.sh stop
-#   ./run.sh restart [normal|experimental]
+#   ./run.sh restart
 #   ./run.sh status
 #   ./run.sh logs                            # follow the current log
 #
@@ -24,16 +24,11 @@ VENV="$ROOT/venv"
 RUN_DIR="$ROOT/.run"
 LOG_DIR="$ROOT/logs"
 PID_FILE="$RUN_DIR/jfresolve.pid"
-MODE_FILE="$RUN_DIR/jfresolve.mode"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 is_running() {
     [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null
-}
-
-current_mode() {
-    cat "$MODE_FILE" 2>/dev/null || echo "unknown"
 }
 
 ensure_venv() {
@@ -67,42 +62,25 @@ ensure_env_file() {
 }
 
 start() {
-    local mode="${1:-experimental}"
-    if [[ "$mode" != "normal" && "$mode" != "experimental" ]]; then
-        echo "Unknown mode '$mode' (expected normal or experimental)" >&2
-        exit 1
-    fi
-    if [[ ! -f "$ROOT/$mode/backend/main.py" ]]; then
-        echo "Error: $mode/backend/main.py not found - '$mode' mode is not available in this checkout." >&2
-        exit 1
-    fi
-
     if is_running; then
-        if [[ "$(current_mode)" == "$mode" ]]; then
-            echo "JF-Resolve ($mode) is already running (PID $(cat "$PID_FILE"))."
-            exit 0
-        fi
-        echo "JF-Resolve is running in $(current_mode) mode; switching to $mode ..."
-        stop
+        echo "JF-Resolve is already running (PID $(cat "$PID_FILE"))."
+        exit 0
     fi
 
-    local req="$ROOT/requirements.txt"
-    [[ -f "$ROOT/$mode/requirements.txt" ]] && req="$ROOT/$mode/requirements.txt"
-    ensure_venv "$req"
+    ensure_venv "$ROOT/requirements.txt"
     ensure_env_file
 
-    local log="$LOG_DIR/jfresolve-$mode.log"
-    echo "Starting JF-Resolve ($mode) on $HOST:$PORT ..."
-    echo "===== $(date '+%F %T') starting $mode on $HOST:$PORT =====" >> "$log"
+    local log="$LOG_DIR/jfresolve.log"
+    echo "Starting JF-Resolve on $HOST:$PORT ..."
+    echo "===== $(date '+%F %T') starting on $HOST:$PORT =====" >> "$log"
 
     # Run uvicorn directly (not via start.py) so the PID we record is the server itself.
     # setsid detaches it from this shell so it survives logout / ssh disconnect.
     local detach=()
     command -v setsid >/dev/null && detach=(setsid)
-    nohup ${detach[@]+"${detach[@]}"} "$VENV/bin/python" -m uvicorn "$mode.backend.main:app" \
+    nohup ${detach[@]+"${detach[@]}"} "$VENV/bin/python" -m uvicorn experimental.backend.main:app \
         --host "$HOST" --port "$PORT" >> "$log" 2>&1 < /dev/null &
     echo $! > "$PID_FILE"
-    echo "$mode" > "$MODE_FILE"
 
     # Wait for the server to answer
     for _ in $(seq 1 30); do
@@ -114,7 +92,7 @@ start() {
         fi
         # Any HTTP status (even a redirect to login) means the server is listening
         if [[ "$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/" 2>/dev/null)" != "000" ]]; then
-            echo "JF-Resolve ($mode) is up - PID $(cat "$PID_FILE"), http://$HOST:$PORT"
+            echo "JF-Resolve is up - PID $(cat "$PID_FILE"), http://$HOST:$PORT"
             echo "Logs: $log"
             return 0
         fi
@@ -131,7 +109,7 @@ stop() {
     fi
     local pid
     pid="$(cat "$PID_FILE")"
-    echo "Stopping JF-Resolve ($(current_mode), PID $pid) ..."
+    echo "Stopping JF-Resolve (PID $pid) ..."
     kill "$pid"
     for _ in $(seq 1 15); do
         kill -0 "$pid" 2>/dev/null || break
@@ -147,7 +125,7 @@ stop() {
 
 status() {
     if is_running; then
-        echo "JF-Resolve is running: mode=$(current_mode) PID=$(cat "$PID_FILE") port=$PORT"
+        echo "JF-Resolve is running: PID=$(cat "$PID_FILE") port=$PORT"
     else
         echo "JF-Resolve is not running."
         exit 3
@@ -155,13 +133,13 @@ status() {
 }
 
 logs() {
-    tail -n 100 -f "$LOG_DIR/jfresolve-$(current_mode).log"
+    tail -n 100 -f "$LOG_DIR/jfresolve.log"
 }
 
 case "${1:-}" in
-    start)   start "${2:-experimental}" ;;
+    start)   start ;;
     stop)    stop ;;
-    restart) stop; start "${2:-$(current_mode | sed 's/unknown/experimental/')}" ;;
+    restart) stop; start ;;
     status)  status ;;
     logs)    logs ;;
     *)
