@@ -135,13 +135,13 @@ class TranscodingService:
             log_service.info(f"Audio: copying {audio_codec} (compatible)")
         else:
             if target_audio_codec == "aac":
-                cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+                cmd.extend(["-c:a", "aac", "-ac", "2", "-b:a", "192k"])
             elif target_audio_codec == "opus":
-                cmd.extend(["-c:a", "libopus", "-b:a", "128k"])
+                cmd.extend(["-c:a", "libopus", "-ac", "2", "-b:a", "128k"])
             elif target_audio_codec == "mp3":
-                cmd.extend(["-c:a", "libmp3lame", "-b:a", "192k"])
+                cmd.extend(["-c:a", "libmp3lame", "-ac", "2", "-b:a", "192k"])
             else:
-                cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+                cmd.extend(["-c:a", "aac", "-ac", "2", "-b:a", "192k"])
 
             log_service.info(
                 f"Audio: transcoding {audio_codec} -> {target_audio_codec}"

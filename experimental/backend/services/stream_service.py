@@ -335,39 +335,5 @@ class StreamService:
             log_service.error(f"HTTP Request failed for {url}: {e}")
             raise HTTPException(status_code=502, detail="Bad Gateway to remote stream")
 
-    @staticmethod
-    def get_transcode_command(input_path: str, quality: str = "720p"):
-        """Generate ffmpeg command for transcoding to HLS (WIP)"""
-        profiles = {
-            "720p": {"width": 1280, "height": 720, "bitrate": "2500k"},
-            "480p": {"width": 854, "height": 480, "bitrate": "1000k"},
-        }
-
-        p = profiles.get(quality, profiles["720p"])
-
-        cmd = [
-            "ffmpeg",
-            "-i",
-            input_path,
-            "-vf",
-            f"scale={p['width']}:{p['height']}",
-            "-c:v",
-            "libx264",
-            "-b:v",
-            p["bitrate"],
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-f",
-            "hls",
-            "-hls_time",
-            "10",
-            "-hls_list_size",
-            "0",
-            "pipe:1",
-        ]
-        return cmd
-
 
 stream_service = StreamService()
