@@ -14,6 +14,8 @@ from .metadata_service import metadata_service
 from .settings_manager import SettingsManager
 from .tmdb_service import TMDBService
 
+_sync_lock = asyncio.Lock()
+
 
 class CatalogueService:
     """Handles syncing and management of media catalogues in the database"""
@@ -101,6 +103,10 @@ class CatalogueService:
 
     async def sync_catalogue_items(self, cat_def: Dict, tmdb: TMDBService):
         """Fetch and populate items for a specific catalogue"""
+        async with _sync_lock:
+            await self._sync_catalogue_items(cat_def, tmdb)
+
+    async def _sync_catalogue_items(self, cat_def: Dict, tmdb: TMDBService):
         log_service.info(f"Syncing catalogue: {cat_def['name']}")
 
         results = []
@@ -136,13 +142,15 @@ class CatalogueService:
         )
 
         position = 0
+        seen = set()
         for item_data in results[:10]:
             try:
                 if not item_data:
                     continue
                 tmdb_id = item_data.get("id")
-                if not tmdb_id:
+                if not tmdb_id or tmdb_id in seen:
                     continue
+                seen.add(tmdb_id)
 
                 details = await tmdb.get_details(tmdb_id, cat_def["type"])
                 if not details:

@@ -101,9 +101,13 @@ async def get_catalogue_items(
     )
     items = result.scalars().all()
     
-    formatted_items = [item.to_dict() for item in items]
-    
-    return formatted_items
+    seen = set()
+    unique_items = []
+    for item in items:
+        if item.uuid not in seen:
+            seen.add(item.uuid)
+            unique_items.append(item.to_dict())
+    return unique_items
 
 
 @router.post("/{slug}/items")
