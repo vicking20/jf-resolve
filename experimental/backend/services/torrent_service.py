@@ -37,6 +37,7 @@ class TorrentService:
         self.lock = asyncio.Lock()
         self.log = None
         self.holds = Counter()
+        self.applied_sharing = None
 
     def hold(self, url):
         self.holds[url] += 1
@@ -60,12 +61,13 @@ class TorrentService:
                 raise HTTPException(status_code=503, detail='Cannot reach the configured TorrServer')
             binary = ROOT / 'data/torrserver/bin' / ('TorrServer.exe' if os.name == 'nt' else 'TorrServer')
             if not binary.exists():
-                raise HTTPException(status_code=503, detail='P2P helper is missing. Run: venv/bin/python scripts/install_torrserver.py')
+                raise HTTPException(status_code=503, detail='P2P helper is missing. Run: python scripts/install_torrserver.py')
             if self.process is None or self.process.returncode is not None:
                 folder = ROOT / 'data/torrserver'
                 if self.log:
                     self.log.close()
                 self.log = (folder / 'server.log').open('ab')
+                self.applied_sharing = None
                 self.process = await asyncio.create_subprocess_exec(
                     str(binary), '--ip', '127.0.0.1', '--port', '8091', '--path', str(folder),
                     stdout=self.log, stderr=self.log,
@@ -97,12 +99,53 @@ class TorrentService:
         full = [f for f in videos if not re.search(r'(^|[ /._-])sample([ /._-]|$)', f['path'], re.I)]
         return max(full or videos, key=lambda f: f.get('length', 0))
 
+    @staticmethod
+    async def load_preferences():
+        from ..database import AsyncSessionLocal
+        from .settings_manager import SettingsManager
+
+        async with AsyncSessionLocal() as db:
+            settings = SettingsManager(db)
+            return (
+                bool(await settings.get('torrent_playback_enabled', True)),
+                bool(await settings.get('torrent_allow_upload', False)),
+                max(0, int(await settings.get('torrent_upload_limit_kbps', 0) or 0)),
+            )
+
+    async def apply_sharing(self, allow_upload: bool, upload_limit_kbps: int):
+        """Push upload/UPnP preferences into the bundled TorrServer when they change.
+
+        An external TorrServer (JF_TORRSERVER_URL) keeps its own settings.
+        """
+        wanted = (allow_upload, upload_limit_kbps)
+        if self.external or self.applied_sharing == wanted:
+            return
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.post(self.url + '/settings', json={'action': 'get'})
+            response.raise_for_status()
+            sets = response.json()
+            sets.update({
+                'DisableUpload': not allow_upload,
+                'DisableUPNP': not allow_upload,
+                'UploadRateLimit': upload_limit_kbps if allow_upload else 0,
+            })
+            response = await client.post(self.url + '/settings', json={'action': 'set', 'sets': sets})
+            response.raise_for_status()
+        self.applied_sharing = wanted
+
     async def resolve(self, magnet: str) -> str:
+        enabled, allow_upload, upload_limit = await self.load_preferences()
+        if not enabled:
+            raise HTTPException(status_code=403, detail='Torrent playback is turned off in Settings')
         magnet = normalize_magnet(magnet)
         selected = parse_qs(urlsplit(magnet).query).get('so', [None])[0]
         if selected is not None and not selected.isdigit():
             raise HTTPException(status_code=400, detail='Choose a single torrent file index')
         await self.ensure_running()
+        try:
+            await self.apply_sharing(allow_upload, upload_limit)
+        except httpx.HTTPError as exc:
+            raise HTTPException(status_code=502, detail='Could not apply upload settings to the P2P helper') from exc
         try:
             async with httpx.AsyncClient(timeout=20) as client:
                 response = await client.post(self.url + '/torrents', json={'action': 'add', 'link': magnet, 'save_to_db': False})

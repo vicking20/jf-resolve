@@ -15,6 +15,8 @@ function settingsPage() {
       jellyfin_scan_enabled: false,
       local_library_enabled: true,
       torrent_playback_enabled: true,
+      torrent_allow_upload: false,
+      torrent_upload_limit_kbps: 0,
       default_play_action: "web",
       jfresolve_public_url: "http://127.0.0.1:8765",
       jellyfin_server_url: "",

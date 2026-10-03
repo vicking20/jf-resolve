@@ -29,10 +29,11 @@ class TorrentTests(unittest.IsolatedAsyncioTestCase):
         client = AsyncMock()
         client.post.side_effect = [SimpleNamespace(raise_for_status=lambda: None, json=lambda: {'hash': HASH}), SimpleNamespace(raise_for_status=lambda: None, json=lambda: {'file_stats': [{'id': 1, 'path': 'first.mkv', 'length': 50}, {'id': 2, 'path': 'second.mkv', 'length': 100}]})]
         client.__aenter__.return_value = client
-        with patch.object(service, 'ensure_running', AsyncMock()), patch('experimental.backend.services.torrent_service.httpx.AsyncClient', return_value=client), patch('experimental.backend.services.torrent_service.asyncio.sleep', AsyncMock()):
+        with patch.object(service, 'ensure_running', AsyncMock()), patch.object(service, 'load_preferences', AsyncMock(return_value=(True, False, 0))), patch.object(service, 'apply_sharing', AsyncMock()) as sharing, patch('experimental.backend.services.torrent_service.httpx.AsyncClient', return_value=client), patch('experimental.backend.services.torrent_service.asyncio.sleep', AsyncMock()):
             url = await service.resolve('magnet:?xt=urn:btih:' + HASH + '&so=0')
         self.assertEqual(parse_qs(urlsplit(url).query)['index'], ['1'])
         self.assertIn('/first.mkv?', url)
+        sharing.assert_awaited_once_with(False, 0)
 
     async def test_magnet_routes_to_helper_not_filesystem(self):
         with patch('experimental.backend.services.torrent_service.torrent_service.resolve', AsyncMock(return_value='http://127.0.0.1:8091/video')) as resolve:

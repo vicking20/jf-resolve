@@ -10,7 +10,9 @@ from ..models.library_path import LibraryPath
 from ..models.media import MediaSourceModel
 from ..models.media_item import MediaItem
 from .log_service import log_service
+from .settings_manager import SettingsManager
 from .smart_match import smart_match_service
+from .torrent_service import is_torrent
 
 if TYPE_CHECKING:
     from .media_resolver import MediaResolver
@@ -168,10 +170,14 @@ class SourceOrchestrator:
                 imdb_id, media_type, season or 0, episode or 0
             )
 
+            torrents_enabled = await SettingsManager(db).get("torrent_playback_enabled", True)
+
             # Post-process addon streams with our parsing
             for addon, streams in addon_streams.items():
                 processed_streams = []
                 for s in streams:
+                    if not torrents_enabled and is_torrent(s.get("url") or ""):
+                        continue
                     parsed = self.parse_source_name(s.get("title", ""), title)
                     processed_streams.append(
                         {

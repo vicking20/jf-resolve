@@ -20,6 +20,8 @@ async def initialize_default_settings(db: AsyncSession):
         "jellyfin_scan_enabled": False,
         "local_library_enabled": True,
         "torrent_playback_enabled": True,
+        "torrent_allow_upload": False,
+        "torrent_upload_limit_kbps": 0,
         "default_play_action": "web",
         # Jellyfin / STRM output. Paths must be visible to Jellyfin.
         "jfresolve_public_url": "http://127.0.0.1:8765",

@@ -155,6 +155,17 @@
                         <span class="label-text">Torrent playback</span>
                         <input type="checkbox" x-model="settings.torrent_playback_enabled" class="toggle toggle-primary" />
                     </label>
+                    <div x-show="settings.torrent_playback_enabled" x-cloak class="pl-4 border-l border-base-300">
+                        <label class="cursor-pointer label">
+                            <span class="label-text">Allow uploading (seeding) while streaming</span>
+                            <input type="checkbox" x-model="settings.torrent_allow_upload" class="toggle toggle-warning" />
+                        </label>
+                        <label class="label" x-show="settings.torrent_allow_upload" x-cloak>
+                            <span class="label-text">Upload limit in KB/s (0 = unlimited)</span>
+                            <input type="number" min="0" x-model.number="settings.torrent_upload_limit_kbps" class="input input-bordered input-sm w-28" />
+                        </label>
+                        <p class="text-xs opacity-60 px-1">Off by default. Uploading shares data with other peers and opens a port on your router (UPnP).</p>
+                    </div>
                 </div>
 
                 <div x-show="settings.jellyfin_integration_enabled" x-cloak class="mt-4 space-y-3">
