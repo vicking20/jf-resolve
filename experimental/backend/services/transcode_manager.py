@@ -11,6 +11,8 @@ from typing import Dict, Optional
 
 from .log_service import log_service
 
+DURATION_RE = re.compile(r"Duration: (\d+):(\d{2}):(\d{2}(?:\.\d+)?)")
+
 
 class TranscodeManager:
     """Manages concurrent transcoding sessions"""
@@ -178,6 +180,31 @@ class TranscodeManager:
         info = self.active_transcodes.get(stream_id, {})
         return info.get("stream_info")
 
+    def watch_output(self, stream_id: str, process) -> None:
+        """Drain FFmpeg's stderr, filling in the duration when probing failed."""
+
+        async def watch():
+            buffer = ""
+            found = False
+            while True:
+                chunk = await process.stderr.read(4096)
+                if not chunk:
+                    break
+                if found:
+                    continue
+                buffer = (buffer + chunk.decode(errors="replace"))[-8192:]
+                match = DURATION_RE.search(buffer)
+                if match:
+                    found = True
+                    h, m, sec = match.groups()
+                    seconds = int(h) * 3600 + int(m) * 60 + float(sec)
+                    info = self.active_transcodes.get(stream_id)
+                    if info is not None and not info.get("duration") and seconds > 0:
+                        info["duration"] = seconds
+                        log_service.info(f"Duration for {stream_id} read from FFmpeg: {seconds:.0f}s")
+
+        asyncio.create_task(watch())
+
     def register_process(self, stream_id: str, process, duration: float = None, stream_info: dict = None, segment_duration: int = 4):
         """
         Register FFmpeg process for cleanup and store stream duration and info
@@ -300,7 +327,8 @@ class TranscodeManager:
         if info.get("duration"):
             max_time = min(max_time, info["duration"])
         return {"min_time": start_time, "max_time": max_time,
-                "segment_count": len(durations), "is_complete": complete}
+                "segment_count": len(durations), "is_complete": complete,
+                "duration": info.get("duration")}
 
     @staticmethod
     def cleanup_hls_files(stream_id: str):

@@ -47,8 +47,13 @@ class FFprobeService:
             "json",
             "-show_format",
             "-show_streams",
-            stream_url,
         ]
+        from .torrent_service import torrent_service
+
+        if stream_url.startswith(torrent_service.url + "/stream/"):
+            timeout = max(timeout, 45)
+            cmd += ["-probesize", "10000000", "-analyzeduration", "10000000"]
+        cmd.append(stream_url)
 
         try:
             proc = await asyncio.create_subprocess_exec(

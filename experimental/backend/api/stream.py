@@ -391,11 +391,12 @@ async def seek_transcode(
             audio_track_index=stream_info["audio_track_index"], start_time=position,
         )
         try:
-            process = await asyncio.create_subprocess_exec(*cmd, stdout=None, stderr=None)
+            process = await asyncio.create_subprocess_exec(*cmd, stdout=None, stderr=asyncio.subprocess.PIPE)
             transcode_manager.set_stream_start_time(stream_id, position)
             transcode_manager.register_process(stream_id, process, duration=duration,
                 stream_info=stream_info,
                 segment_duration=stream_info["transcode_settings"].get("hls_segment_duration", 4))
+            transcode_manager.watch_output(stream_id, process)
             if not await transcode_manager.wait_for_hls_ready(playlist_path, timeout=45, process=process):
                 raise RuntimeError("FFmpeg did not produce a playable seek playlist")
             return {"status": "ok", "position": position}

@@ -74,6 +74,7 @@ class VideoPlayer {
         this.duration = data.probe_info?.duration
             ? parseFloat(data.probe_info.duration)
             : null;
+        if (!this.duration && this.streamId) this._waitForDuration(this.streamId);
 
         if (this.streamId && startTime > 0) {
             const response = await fetch(`/api/stream/transcode/${this.streamId}/seek?position=${startTime}`, { method: 'POST' });
@@ -204,6 +205,22 @@ class VideoPlayer {
     get totalDuration() {
         const duration = this.duration || this.art?.video?.duration;
         return Number.isFinite(duration) ? duration : 0;
+    }
+
+    async _waitForDuration(streamId) {
+        for (let attempt = 0; attempt < 60; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            if (this.isDestroyed || this.streamId !== streamId || this.duration) return;
+            try {
+                const response = await fetch(`/api/stream/transcode/${streamId}/segment-range`);
+                if (!response.ok) continue;
+                const data = await response.json();
+                if (data.duration > 0 && this.streamId === streamId) {
+                    this.duration = Number(data.duration);
+                    return;
+                }
+            } catch (error) {}
+        }
     }
 
     _applyDuration() {

@@ -233,7 +233,7 @@ class TranscodingService:
             process = await asyncio.create_subprocess_exec(
                 *ffmpeg_cmd,
                 stdout=None,
-                stderr=None,
+                stderr=asyncio.subprocess.PIPE,
             )
 
             duration_val = probe_info.get("duration")
@@ -257,6 +257,7 @@ class TranscodingService:
                 stream_info=stream_info,
                 segment_duration=segment_duration
             )
+            transcode_manager.watch_output(stream_id, process)
 
             ready = await transcode_manager.wait_for_hls_ready(
                 playlist_path, timeout=45, process=process
