@@ -158,12 +158,29 @@ tv/
 
 Each file holds a link back to JF-Resolve. When Jellyfin plays it, JF-Resolve asks your addons for streams and redirects to the first playable one, in the addon's order. To control which release plays, set up sorting and filters in the addon (AIOStreams is good at this). Magnet links and streams that need custom headers are skipped, since Jellyfin can't follow them.
 
+### Versions per movie
+
+Set **Versions per movie** (Settings → Connections → Jellyfin) to 2–5 to get a version picker in Jellyfin:
+
+```
+Movie Title (2024)/
+  Movie Title (2024) - Option 1.strm
+  Movie Title (2024) - Option 2.strm
+  Movie Title (2024) - Option 3.strm
+```
+
+Option 1 plays the addon's first stream, Option 2 the second, and so on. Options are positions in the addon's results at play time, not fixed files, so Option 2 can be a different release next week. TV episodes always get one file.
+
+### Rewriting STRM files
+
+The files contain the JF-Resolve URL, so they need rewriting if that URL changes. Click **Rewrite STRM files** in the same settings section (after saving) to update every movie and show, and to apply a new versions setting to titles already added.
+
 Removing a title deletes only folders JF-Resolve created (they contain a `.jfresolve` marker).
 
 ## Troubleshooting
 
 - **Nothing shows up in Jellyfin:** check the STRM folders are mounted and added as Jellyfin libraries, then run a library scan.
-- **Jellyfin can't play a title:** make sure the JF-Resolve URL in Settings is reachable from the Jellyfin server, and check the logs page.
+- **Jellyfin can't play a title:** make sure the JF-Resolve URL in Settings is reachable from the Jellyfin server, and check the logs page. If you changed that URL, click **Rewrite STRM files**.
 - **No streams:** check the addon URL and that your debrid account is active.
 - **Browser can't play a stream:** pick another source from the player's source menu, or make sure FFmpeg is installed.
 

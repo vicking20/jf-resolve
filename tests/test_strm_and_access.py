@@ -126,14 +126,23 @@ class StrmServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([p.name for p in folder.glob("*.strm")], ["Heat Redux (1995).strm"])
         self.assertNotIn("index", parse_qs(urlparse((folder / "Heat Redux (1995).strm").read_text()).query))
 
-    async def test_rewrite_movies_applies_versions_to_existing_movies(self):
+    async def test_rewrite_applies_versions_to_existing_movies(self):
         await self.service.generate(949, "movie")
         (self.root / "movies" / "Mine (2001)").mkdir()
         self.settings.values["strm_movie_versions"] = 2
-        result = await self.service.rewrite_movies()
+        result = await self.service.rewrite_all()
         self.assertEqual(result, {"rewritten": 1, "failed": []})
         self.assertEqual(len(list((self.root / "movies" / "Heat Redux (1995)").glob("*.strm"))), 2)
         self.assertEqual(list((self.root / "movies" / "Mine (2001)").iterdir()), [])
+
+    async def test_rewrite_updates_episode_links_after_url_change(self):
+        await self.service.generate(1, "tv")
+        episode = self.root / "tv" / "Show (2020)" / "Season 01" / "Show (2020) - S01E01 - Pilot.strm"
+        self.assertTrue(episode.read_text().startswith("http://jfr:8765/"))
+        self.settings.values["jfresolve_public_url"] = "http://192.168.1.10:8765"
+        result = await self.service.rewrite_all()
+        self.assertEqual(result, {"rewritten": 1, "failed": []})
+        self.assertTrue(episode.read_text().startswith("http://192.168.1.10:8765/api/strm/play/tv/1?"))
 
     async def test_missing_library_path_is_a_clear_error(self):
         self.settings.values.pop("jellyfin_movie_path")

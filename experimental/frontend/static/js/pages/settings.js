@@ -87,14 +87,14 @@ function settingsPage() {
       await this.loadScannerStatus();
     },
 
-    async rewriteMovieStrms() {
+    async rewriteStrms() {
       this.rewritingStrms = true;
       try {
-        const response = await fetch("/api/strm/rewrite-movies", { method: "POST" });
+        const response = await fetch("/api/strm/rewrite", { method: "POST" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || "Rewrite failed");
         const failed = data.failed.length ? `, ${data.failed.length} failed` : "";
-        this.showToast(`Rewrote ${data.rewritten} movies${failed}`, data.failed.length ? "error" : "success");
+        this.showToast(`Rewrote ${data.rewritten} titles${failed}`, data.failed.length ? "error" : "success");
       } catch (error) {
         this.showToast(error.message, "error");
       } finally {

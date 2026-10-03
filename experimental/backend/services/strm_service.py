@@ -80,7 +80,7 @@ class StrmService:
         await self._write(folder / MARKER_FILE, "")
         await self._write(folder / ".metadata.json", json.dumps(data, indent=2))
 
-    async def generate(self, tmdb_id: int, media_type: str, scan: bool = True) -> Dict:
+    async def generate(self, tmdb_id: int, media_type: str, scan: bool = True, overwrite: bool = False) -> Dict:
         """Create (or top up) the STRM folder for a title.
 
         Existing episode files are left alone, so calling this again after a
@@ -135,7 +135,7 @@ class StrmService:
                     strm_path = season_folder / (
                         f"{clean_title} ({year}) - S{season_num:02d}E{episode_num:02d} - {episode_title}.strm"
                     )
-                    if await asyncio.to_thread(strm_path.exists):
+                    if not overwrite and await asyncio.to_thread(strm_path.exists):
                         continue
                     await self._write(
                         strm_path,
@@ -152,20 +152,24 @@ class StrmService:
             await self.trigger_jellyfin_scan()
         return {"folder": str(folder), "created": created}
 
-    async def rewrite_movies(self) -> Dict:
-        """Rewrite every movie folder JF-Resolve created, e.g. after changing versions."""
-        base = await self._base_path("movie")
+    async def rewrite_all(self) -> Dict:
+        """Rewrite every STRM folder JF-Resolve created, e.g. after changing the URL or versions."""
         rewritten, failed = 0, []
-        for metadata in sorted(base.glob("*/.metadata.json")):
-            folder = metadata.parent
-            if not (folder / MARKER_FILE).exists():
-                continue
+        for media_type in ("movie", "tv"):
             try:
-                tmdb_id = int(json.loads(metadata.read_text())["tmdb_id"])
-                await self.generate(tmdb_id, "movie", scan=False)
-                rewritten += 1
-            except Exception as e:
-                failed.append(f"{folder.name}: {e}")
+                base = await self._base_path(media_type)
+            except ValueError:
+                continue
+            for metadata in sorted(base.glob("*/.metadata.json")):
+                folder = metadata.parent
+                if not (folder / MARKER_FILE).exists():
+                    continue
+                try:
+                    tmdb_id = int(json.loads(metadata.read_text())["tmdb_id"])
+                    await self.generate(tmdb_id, media_type, scan=False, overwrite=True)
+                    rewritten += 1
+                except Exception as e:
+                    failed.append(f"{folder.name}: {e}")
         if rewritten:
             await self.trigger_jellyfin_scan()
         return {"rewritten": rewritten, "failed": failed}

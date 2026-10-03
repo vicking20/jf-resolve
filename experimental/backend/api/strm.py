@@ -82,18 +82,18 @@ async def play(
     return RedirectResponse(url, status_code=302)
 
 
-@router.post("/rewrite-movies")
-async def rewrite_movies(
+@router.post("/rewrite")
+async def rewrite_strm_files(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
-    """Apply the current STRM settings (such as versions per movie) to existing movies."""
+    """Rewrite existing STRM files with the current URL, token and versions setting."""
     settings = SettingsManager(db)
     if not await settings.get("strm_generation_enabled", False):
         raise HTTPException(status_code=409, detail="STRM output is disabled")
     tmdb = TMDBService(await settings.get("tmdb_api_key") or "")
     try:
-        return await StrmService(settings, tmdb).rewrite_movies()
+        return await StrmService(settings, tmdb).rewrite_all()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     finally:
