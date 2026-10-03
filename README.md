@@ -88,6 +88,8 @@ source venv/bin/activate
 python start.py
 ```
 
+`setup.sh` also installs TorrServer for torrent playback. If that step fails, run `python scripts/install_torrserver.py` later.
+
 To run it in the background instead: `./run.sh start`, `./run.sh stop`, `./run.sh status`, `./run.sh logs`.
 
 ### Windows (PowerShell)
@@ -97,6 +99,7 @@ py -3.12 -m venv venv
 .\venv\Scripts\Activate.ps1
 $env:PYTHONUTF8 = "1"
 python -m pip install -r requirements.txt
+python scripts/install_torrserver.py
 python start.py
 ```
 
