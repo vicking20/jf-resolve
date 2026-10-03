@@ -162,7 +162,7 @@ class StrmService:
             return
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                response = await client.post(f"{url}/Library/Refresh", headers={"X-Emby-Token": api_key})
+                response = await client.post(f"{url}/Library/Refresh", headers={"Authorization": f'MediaBrowser Token="{api_key}"'})
                 response.raise_for_status()
             log_service.info("STRM: triggered Jellyfin library scan")
         except Exception as e:
