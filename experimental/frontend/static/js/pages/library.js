@@ -15,7 +15,7 @@ function libraryPage() {
     watchlistItems: [],
 
     async init() {
-      // Check for filter in URL
+
       const urlParams = new URLSearchParams(window.location.search);
       const filterParam = urlParams.get("filter");
       if (filterParam) {
@@ -25,12 +25,10 @@ function libraryPage() {
       await this.loadLibrary();
     },
 
-
-
     async loadLibrary() {
       this.loading = true;
       try {
-        // If watchlist filter, load watchlist instead
+
         if (this.filter === "watchlist") {
           await this.loadWatchlist();
           return;
@@ -44,7 +42,6 @@ function libraryPage() {
         if (this.filter !== "all") {
           params.append("type", this.filter === "movies" ? "movie" : "tv");
         }
-
 
         const response = await fetch(`/api/library/items?${params}`);
         const data = await response.json();
@@ -72,7 +69,7 @@ function libraryPage() {
           this.watchlistItems = data;
           this.items = data;
           this.totalItems = this.items.length;
-          this.totalPages = 1; // No pagination for watchlist
+          this.totalPages = 1;
         } else {
           this.items = [];
           this.totalItems = 0;
@@ -84,7 +81,6 @@ function libraryPage() {
         this.loading = false;
       }
     },
-
 
     changePage(newPage) {
       if (newPage >= 1 && newPage <= this.totalPages) {
@@ -119,7 +115,6 @@ function libraryPage() {
     getPosterUrl(path, itemSource = null) {
       const item = itemSource || {};
 
-      // Handle continue watching items with nested media
       const media = item.media || item;
       const meta = media.metadata || media;
       const images = media.image_paths || {};
@@ -148,7 +143,7 @@ function libraryPage() {
     },
 
     async showDetail(item) {
-      // Navigate to media detail page
+
       const mediaType = item.media_type || "movie";
       const identifier = item.uuid || item.tmdb_id || item.id;
 
@@ -158,8 +153,6 @@ function libraryPage() {
         this.selectedItem = item;
       }
     },
-
-    // Unified notifications used via Alpine.store("notifications")
 
     refreshItem(item) {
       Alpine.store("notifications").confirm(
@@ -263,7 +256,7 @@ function libraryPage() {
         `Delete ${this.selectedItems.length} item(s) from library?`,
         async () => {
           try {
-            // Delete each selected item
+
             for (const item of this.selectedItems) {
               await fetch(`/api/library/${item.uuid}`, { method: "DELETE" });
             }
@@ -282,7 +275,7 @@ function libraryPage() {
     },
 
     formatProgress(item) {
-      // Handle continue watching items with nested media
+
       const media = item.media || item;
       const mediaType = media.media_type || item.media_type;
 
@@ -295,7 +288,6 @@ function libraryPage() {
     resumePlayback(item) {
       const time = Math.floor(item.position_seconds || item.current_time || 0);
 
-      // Continue watching items have nested media object from API
       const media = item.media || item;
       const type = media.media_type || item.media_type || "movie";
       const identifier = media.uuid || item.uuid || media.tmdb_id || item.tmdb_id || media.id || item.id;
@@ -319,7 +311,6 @@ function libraryPage() {
   };
 }
 
-// Register with Alpine
 document.addEventListener("alpine:init", () => {
   Alpine.data("libraryPage", libraryPage);
 });

@@ -139,7 +139,6 @@ class AppSecurityTests(unittest.IsolatedAsyncioTestCase):
         blocked = await self.login(self.client(), 'admin', 'adminpass1', attacker)
         self.assertEqual(blocked.status_code, 429)
         self.assertIn('retry-after', blocked.headers)
-        # A different client behind the same tunnel is unaffected
         other = await self.login(self.client(), 'admin', 'adminpass1', {'CF-Connecting-IP': '198.51.100.7'})
         self.assertEqual(other.status_code, 200)
 

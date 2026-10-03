@@ -15,14 +15,13 @@ from ..services.log_service import log_service
 router = APIRouter(prefix="/api/library-paths", tags=["library-paths"])
 
 
-# Schemas
 class LibraryPathCreate(BaseModel):
     """Create library path request"""
 
     name: str
     path: str
-    media_type: str  # "movie", "tv", or "video"
-    scan_interval: int = 0  # Minutes
+    media_type: str
+    scan_interval: int = 0
 
 
 class LibraryPathUpdate(BaseModel):
@@ -63,19 +62,16 @@ async def create_library_path(
 
     """
 
-    # Validate media type
     if data.media_type not in ["movie", "tv", "video"]:
         raise HTTPException(
             status_code=400, detail="media_type must be 'movie', 'tv', or 'video'"
         )
 
-    # Check if path already exists
     result = await db.execute(select(LibraryPath).where(LibraryPath.path == data.path))
     existing = result.scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=400, detail="Library path already exists")
 
-    # Create library path
     from ..models.media import MediaType
 
     library_path = LibraryPath(
@@ -90,8 +86,6 @@ async def create_library_path(
     await db.commit()
     await db.refresh(library_path)
 
-    # Trigger initial scan if appropriate
-    # Import here to avoid circular dependency
     import asyncio
     from ..services.library.scanner_coordinator import create_scanner_coordinator
     from ..services.settings_manager import SettingsManager
@@ -105,9 +99,6 @@ async def create_library_path(
         coordinator = await create_scanner_coordinator(db, tmdb)
         mode = await coordinator.mode_manager.get_effective_mode(library_path)
         
-        # Trigger scan for:
-        # 1. Active mode (all media types)
-        # 2. Video/video_series (always scanned regardless of mode)
         should_scan = (
             mode == "active" or 
             library_path.media_type.value in ["video", "video_series"]
@@ -115,7 +106,6 @@ async def create_library_path(
         
         if should_scan:
             log_service.info(f"Triggering initial scan for new library path: {library_path.path}")
-            # Run scan in background
             asyncio.create_task(coordinator.run_scan(library_path, force_rescan=True))
         
         if tmdb:
@@ -164,7 +154,6 @@ async def update_library_path(
     if not path:
         raise HTTPException(status_code=404, detail="Library path not found")
 
-    # Update fields
     if data.name is not None:
         path.name = data.name
     if data.path is not None:
@@ -203,7 +192,6 @@ async def delete_library_path(
     if not path:
         raise HTTPException(status_code=404, detail="Library path not found")
 
-    # Get all media UUIDs associated with this library path before deletion
     sources_result = await db.execute(
         select(MediaSourceModel.media_uuid).where(
             MediaSourceModel.library_path_id == path_id
@@ -211,21 +199,17 @@ async def delete_library_path(
     )
     media_uuids = set(sources_result.scalars().all())
 
-    # Delete dependent records first to avoid FK constraints
     await db.execute(
         delete(LibraryScanJob).where(LibraryScanJob.library_path_id == path_id)
     )
 
-    # Delete media sources associated with this path
     await db.execute(
         delete(MediaSourceModel).where(MediaSourceModel.library_path_id == path_id)
     )
 
-    # Delete the path itself
     await db.delete(path)
     await db.commit()
 
-    # Cleanup orphaned media items (items with no remaining sources)
     if media_uuids:
         cleanup_service = CleanupService(db)
         await cleanup_service._cleanup_orphaned_items(media_uuids)

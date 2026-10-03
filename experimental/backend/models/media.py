@@ -18,38 +18,30 @@ class MediaSourceModel(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Link to media_items
     media_uuid = Column(String(36), ForeignKey("media_items.uuid", ondelete="CASCADE"), nullable=False, index=True)
     
-    # Library association
     library_path_id = Column(
         Integer, ForeignKey("library_paths.id", ondelete="SET NULL"), nullable=True
     )
 
-    # Source info
-    # source_type: local, strm, url, stream (addon)
     source_type = Column(String(20), default="local")
-    file_path = Column(String(1000), nullable=True, index=True)  # For local/strm files
-    stream_url = Column(String(2000), nullable=True)  # Direct URL for url/stream types
-    stream_title = Column(String(255), nullable=True)  # Display name for the source
+    file_path = Column(String(1000), nullable=True, index=True)
+    stream_url = Column(String(2000), nullable=True)
+    stream_title = Column(String(255), nullable=True)
     file_size = Column(BigInteger, nullable=True)
-    duration = Column(Float, nullable=True)  # Duration in seconds
+    duration = Column(Float, nullable=True)
 
-    # Quality info
-    resolution = Column(String(20), nullable=True)  # 2160p, 1080p, 720p, etc.
+    resolution = Column(String(20), nullable=True)
     codec = Column(String(50), nullable=True)
     bitrate = Column(Integer, nullable=True)
 
-    # Availability
     is_available = Column(Boolean, default=True)
     last_verified = Column(DateTime(timezone=True), nullable=True)
 
-    # Priority
     priority = Column(
         Integer, default=0
-    )  # Higher = preferred (0 = local/strm, 1 = streams)
+    )
 
-    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -76,8 +68,7 @@ class MediaSourceModel(Base):
         if self.source_type == "local":
             return self.file_path
         elif self.source_type == "strm":
-            # STRM file - read URL from file
-            return self.file_path  # Resolved at playback time
+            return self.file_path
         elif self.source_type in ("url", "stream"):
             return self.stream_url
         return self.file_path or self.stream_url
@@ -90,18 +81,14 @@ class LibraryScanJob(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Scanned path (null = all paths)
     library_path_id = Column(
         Integer, ForeignKey("library_paths.id", ondelete="SET NULL"), nullable=True
     )
 
-    # Status
-    # status: pending, running, completed, failed
     status = Column(String(20), default="pending", index=True)
     cancelled = Column(Boolean, default=False)
     error_message = Column(Text, nullable=True)
 
-    # Progress stats
     total_files = Column(Integer, default=0)
     processed_files = Column(Integer, default=0)
     matched_files = Column(Integer, default=0)
@@ -109,15 +96,12 @@ class LibraryScanJob(Base):
     new_media_added = Column(Integer, default=0)
     existing_media_updated = Column(Integer, default=0)
 
-    # Performance
-    start_time = Column(Float, nullable=True)  # time.time()
+    start_time = Column(Float, nullable=True)
     end_time = Column(Float, nullable=True)
 
-    # Ownership and Lifecycle
     triggered_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 

@@ -19,28 +19,23 @@ class LibraryPath(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Path details
-    name = Column(String(100), nullable=False)  # "Movies", "TV Shows", "Anime"
-    path = Column(String(500), nullable=False)  # "/mnt/media/movies"
-    media_type = Column(SQLEnum(MediaType), nullable=False)  # movie, tv, or video
+    name = Column(String(100), nullable=False)
+    path = Column(String(500), nullable=False)
+    media_type = Column(SQLEnum(MediaType), nullable=False)
 
-    # Status
     enabled = Column(Boolean, default=True, nullable=False)
 
-    # Scanning
-    scan_interval = Column(Integer, default=0)  # Minutes, 0 = manual only
+    scan_interval = Column(Integer, default=0)
     last_scanned = Column(DateTime(timezone=True))
     scan_mode_override = Column(
         String(20), nullable=True
-    )  # Override global mode: "lazy" or "active"
+    )
     watch_enabled = Column(
         Boolean, default=True, nullable=False
-    )  # Enable file watching
+    )
 
-    # Owner
     created_by_user_id = Column(Integer, ForeignKey("users.id"))
 
-    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

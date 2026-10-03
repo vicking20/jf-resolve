@@ -48,8 +48,6 @@ async def get_media_details(
         raise HTTPException(status_code=404, detail="Media item not found")
     await ensure_item_allowed(db, current_user, item)
 
-    # Enrichment: Add library status, etc.
-    # (The resolver already indicates if it's persisted)
 
     return item
 
@@ -80,11 +78,9 @@ async def get_media_sources(
     imdb_id = item.get("imdb_id")
     tmdb_id = item.get("tmdb_id")
 
-    # If we have tmdb_id but no imdb_id, fetch it from TMDB (needed for stream addons)
     if tmdb_id and not imdb_id:
         imdb_id = await resolver.tmdb.get_imdb_id(int(tmdb_id), item["media_type"])
 
-        # Save to DB only if item already has uuid (is persisted)
         if imdb_id and media_uuid:
             from sqlalchemy.exc import IntegrityError
             try:
@@ -98,8 +94,6 @@ async def get_media_sources(
                 await db.rollback()
                 log_service.info(f"IMDb ID {imdb_id} already linked in database, skipping")
 
-    # Orchestrate sources
-    # Pass resolver and item for JIT auto-persist (only persists if JIT finds files)
     sources = await source_orchestrator.get_sources(
         db=db,
         media_uuid=media_uuid,
@@ -110,7 +104,6 @@ async def get_media_sources(
         year=item.get("year"),
         season=season,
         episode=episode,
-        # For JIT auto-persist of transient items
         transient_item=item if not media_uuid else None,
         resolver=resolver if not media_uuid else None,
     )

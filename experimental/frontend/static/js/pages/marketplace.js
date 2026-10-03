@@ -70,7 +70,7 @@ function marketplacePage() {
         if (response.ok) {
           const data = await response.json();
           Alpine.store("notifications").success("Plugin installed successfully!");
-          // Reload marketplace to update status
+
           await this.loadMarketplace();
         } else {
           const error = await response.json();
@@ -99,7 +99,7 @@ function marketplacePage() {
         if (response.ok) {
           const data = await response.json();
           Alpine.store("notifications").success(`Plugin updated to v${data.new_version}!`);
-          // Reload marketplace to update status
+
           await this.loadMarketplace();
         } else {
           const error = await response.json();
@@ -149,19 +149,16 @@ function marketplacePage() {
       this.customManifestUrl = this.customManifestUrl.trim();
       this.loading = true;
       try {
-        // The server validates manifests; browser fetches can fail due to CORS.
-        // Get current repositories
+
         const getResponse = await window.fetchWithAuth("/api/addons/repositories");
         if (!getResponse.ok) throw new Error("Failed to get repositories");
 
         const data = await getResponse.json();
         const repositories = data.repositories || [];
 
-        // Add new repository if not already present
         if (!repositories.includes(this.customManifestUrl)) {
           repositories.push(this.customManifestUrl);
 
-          // Save updated list
           const postResponse = await window.fetchWithAuth("/api/addons/repositories", {
             method: "POST",
             body: JSON.stringify(repositories),
@@ -171,12 +168,12 @@ function marketplacePage() {
             Alpine.store("notifications").success("Repository added successfully!");
             this.showAddRepositoryModal = false;
             this.customManifestUrl = "";
-            // Reload marketplace to include new repository
+
             await this.loadMarketplace();
           } else {
             const error = await postResponse.json().catch(() => ({}));
             Alpine.store("notifications").error(error.detail || "Failed to save repository");
-            this.loading = false; // Reset loading if we didn't reload
+            this.loading = false;
           }
         } else {
           Alpine.store("notifications").info("Repository already added");
@@ -188,7 +185,6 @@ function marketplacePage() {
         this.loading = false;
       }
     },
-
 
   };
 }

@@ -40,7 +40,6 @@ function setupWizard() {
       this.loading = true;
       this.error = "";
 
-      // 1. Create user
       fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -57,7 +56,7 @@ function setupWizard() {
           }
           return response.json();
         })
-        // 2. Apply the selected operating profile.
+
         .then(() => {
           return fetch("/api/settings/operation-profile", {
             method: "PUT",
@@ -67,7 +66,7 @@ function setupWizard() {
         })
         .then((response) => {
           if (!response.ok) throw new Error("Failed to save operating mode");
-          // 3. Save optional service connections.
+
           return fetch("/api/settings/", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -91,7 +90,7 @@ function setupWizard() {
           }
           return response.json();
         })
-        // 4. Move to the final step and sync when TMDB is configured.
+
         .then(() => {
           this.step = 5;
           this.loading = false;

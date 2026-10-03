@@ -4,26 +4,24 @@ from typing import Dict, Optional
 
 from ..models.user_profile import ContentRating
 
-# Mapping of TMDB movie certifications (US) to our ContentRating enum
 MOVIE_RATING_MAP = {
     "G": ContentRating.FAMILY,
     "PG": ContentRating.FAMILY,
     "PG-13": ContentRating.TEEN,
     "R": ContentRating.MATURE,
     "NC-17": ContentRating.ADULT,
-    "NR": ContentRating.ADULT,  # Not Rated - assume adult
-    "UR": ContentRating.ADULT,  # Unrated - assume adult
+    "NR": ContentRating.ADULT,
+    "UR": ContentRating.ADULT,
 }
 
-# Mapping of TMDB TV ratings (US) to our ContentRating enum
 TV_RATING_MAP = {
-    "TV-Y": ContentRating.FAMILY,  # All Children
-    "TV-Y7": ContentRating.FAMILY,  # Older Children
-    "TV-G": ContentRating.FAMILY,  # General Audience
-    "TV-PG": ContentRating.TEEN,  # Parental Guidance
-    "TV-14": ContentRating.TEEN,  # Parents Strongly Cautioned
-    "TV-MA": ContentRating.MATURE,  # Mature Audience
-    "NR": ContentRating.ADULT,  # Not Rated
+    "TV-Y": ContentRating.FAMILY,
+    "TV-Y7": ContentRating.FAMILY,
+    "TV-G": ContentRating.FAMILY,
+    "TV-PG": ContentRating.TEEN,
+    "TV-14": ContentRating.TEEN,
+    "TV-MA": ContentRating.MATURE,
+    "NR": ContentRating.ADULT,
 }
 
 
@@ -39,11 +37,9 @@ def get_us_movie_certification(tmdb_data: Dict) -> Optional[str]:
     """
     release_dates = tmdb_data.get("release_dates", {}).get("results", [])
 
-    # Look for US certification
     for country_data in release_dates:
         if country_data.get("iso_3166_1") == "US":
             certifications = country_data.get("release_dates", [])
-            # Get the first non-empty certification
             for release in certifications:
                 cert = release.get("certification")
                 if cert:
@@ -64,7 +60,6 @@ def get_us_tv_rating(tmdb_data: Dict) -> Optional[str]:
     """
     content_ratings = tmdb_data.get("content_ratings", {}).get("results", [])
 
-    # Look for US rating
     for rating_data in content_ratings:
         if rating_data.get("iso_3166_1") == "US":
             return rating_data.get("rating")
@@ -84,7 +79,7 @@ def get_content_rating_level(content_rating: Optional[str], media_type: str) -> 
         4 = UNKNOWN (no rating)
     """
     if not content_rating:
-        return 4  # Unknown - most restrictive
+        return 4
 
     if media_type == "movie":
         rating_enum = MOVIE_RATING_MAP.get(content_rating)
@@ -92,7 +87,7 @@ def get_content_rating_level(content_rating: Optional[str], media_type: str) -> 
         rating_enum = TV_RATING_MAP.get(content_rating)
 
     if not rating_enum:
-        return 4  # Unknown
+        return 4
 
     level_map = {
         ContentRating.FAMILY: 0,
@@ -119,7 +114,7 @@ def get_max_rating_level(max_content_rating: ContentRating) -> int:
         ContentRating.TEEN: 1,
         ContentRating.MATURE: 2,
         ContentRating.ADULT: 3,
-        ContentRating.ALL: 4,  # Allow everything including unknown
+        ContentRating.ALL: 4,
     }
 
     return level_map.get(max_content_rating, 4)

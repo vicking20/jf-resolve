@@ -33,10 +33,8 @@ class DiscoverService:
         Get discover results for a category. 
         Uses cache if valid, otherwise refreshes from TMDB.
         """
-        # 1. Check if we have valid cache for this category and page
         cache_cutoff = datetime.now() - timedelta(hours=24)
         
-        # Check for existence of any cached item for this category/page updated recently
         check_stmt = select(DiscoverItem).where(
             and_(
                 DiscoverItem.category == category,
@@ -51,7 +49,6 @@ class DiscoverService:
             logger.info(f"Cache miss or expired for discover category '{category}' page {page}. Syncing...")
             await self._sync_category(category, page)
 
-        # 2. Query items from DB
         items_stmt = (
             select(MediaItem)
             .join(DiscoverItem, DiscoverItem.media_uuid == MediaItem.uuid)
@@ -68,12 +65,10 @@ class DiscoverService:
         result = await self.db.execute(items_stmt)
         items = result.scalars().all()
         
-        # 3. Filter and Format
         filtered_items = []
         for item in items:
             data = item.to_dict()
             
-            # Apply parental controls if enabled
             if parental_controls:
                 content_rating = data.get("content_rating")
                 if not is_content_allowed(content_rating, data["media_type"], max_rating):
@@ -107,7 +102,6 @@ class DiscoverService:
                 logger.error(f"Unknown discover category: {category}")
                 return
 
-            # Clear existing discover items for this category/page to avoid duplicates/orphans
             await self.db.execute(
                 delete(DiscoverItem).where(
                     and_(
@@ -122,7 +116,6 @@ class DiscoverService:
                 if not tmdb_id:
                     continue
 
-                # 1. Check if media item already exists
                 existing_stmt = select(MediaExternalId.media_uuid).where(
                     and_(
                         MediaExternalId.provider == "tmdb",
@@ -132,14 +125,10 @@ class DiscoverService:
                 media_uuid = (await self.db.execute(existing_stmt)).scalar_one_or_none()
 
                 if not media_uuid:
-                    # Create transient media item
                     parsed = self.tmdb.parse_media_item(item_data, media_type=media_type)
                     
-                    # Ensure we have details for content rating if not in search result
-                    # TMDB search/popular results often lack certification
                     if not parsed.get("content_rating"):
                         try:
-                            # Use lazy details fetch
                             details = await self.tmdb.get_details(tmdb_id, media_type)
                             if details:
                                 from ..utils.content_rating import get_us_movie_certification, get_us_tv_rating
@@ -164,14 +153,12 @@ class DiscoverService:
                     await self.db.flush()
                     media_uuid = new_media.uuid
                     
-                    # Add external ID mapping
                     self.db.add(MediaExternalId(
                         media_uuid=media_uuid,
                         provider="tmdb",
                         external_id=str(tmdb_id)
                     ))
                 
-                # 2. Link to DiscoverItem
                 discover_link = DiscoverItem(
                     media_uuid=media_uuid,
                     category=category,

@@ -42,7 +42,7 @@ class MediaCreate(BaseModel):
     """Create media request"""
 
     tmdb_id: int
-    media_type: str  # "movie" or "tv"
+    media_type: str
 
 
 class MediaList(BaseModel):

@@ -17,7 +17,7 @@ class StremioClient:
     """Internal Stremio client for the plugin"""
 
     _last_request_time = 0
-    _request_delay = 0.2  # 200ms
+    _request_delay = 0.2
 
     def __init__(self, manifest_url: str):
         self.manifest_url = self.normalize_url(manifest_url)
@@ -61,7 +61,6 @@ class StremioClient:
 
     async def get_streams(self, media_type: str, id_string: str) -> List[Dict]:
         await self._rate_limit()
-        # Stremio uses 'series' instead of 'tv' in URL
         type_str = "series" if media_type == "tv" else "movie"
         url = f"{self.manifest_url}/stream/{type_str}/{id_string}.json"
 
@@ -138,7 +137,6 @@ class Plugin(BasePlugin, SourceProvider):
         name_raw = s.get("name", "")
         combined = f"{name_raw}\n{title_raw}"
 
-        # 1. Detect Quality/Resolution
         quality = "unknown"
         res_match = re.search(r"(4k|2160p|1440p|1080p|720p|480p|360p)", combined, re.I)
         if res_match:
@@ -148,25 +146,18 @@ class Plugin(BasePlugin, SourceProvider):
         elif "hd" in combined.lower():
             quality = "720p"
 
-        # 2. Detect Size
         size = None
-        # Common pattern: 💾 12.5 GB or 📦 2.1 GB
         size_match = re.search(r"[💾📦]\s*([\d.]+\s*[KMG]B)", combined, re.I)
         if size_match:
             size = size_match.group(1).strip()
         else:
-            # Fallback for plain text size: 12.5 GB
             size_text = re.search(r"(\d+\.?\d*)\s*(GB|MB)", combined, re.I)
             if size_text:
                 size = f"{size_text.group(1)} {size_text.group(2).upper()}"
 
-        # 3. Clean Title
-        # Extract filename if available in behaviorHints
         clean_title = s.get("behaviorHints", {}).get("filename")
         if not clean_title:
-            # Otherwise use first line of title or name
             clean_title = title_raw.split("\n")[0] or name_raw.split("\n")[0]
-            # Strip common junk if it looks like a filename
             clean_title = clean_title.strip()
 
         return {
@@ -219,10 +210,8 @@ class Plugin(BasePlugin, SourceProvider):
             seen_urls.add(stream_url)
             info = self._parse_stream_info(s)
 
-            # Use raw title (messy) if show_details is True, otherwise use clean title
             display_title = info["raw_title"] if show_details else info["clean_title"]
 
-            # Map Stremio headers
             headers = {}
             bh = s.get("behaviorHints", {})
             if bh.get("proxyHeaders"):

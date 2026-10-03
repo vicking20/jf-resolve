@@ -14,13 +14,13 @@ class MediaRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     tmdb_id = Column(Integer, nullable=False, index=True)
-    media_type = Column(String(10), nullable=False)  # movie | tv
+    media_type = Column(String(10), nullable=False)
     title = Column(String(500), nullable=False)
     year = Column(Integer, nullable=True)
     poster_path = Column(String(500), nullable=True)
     content_rating = Column(String(20), nullable=True)
-    status = Column(String(20), nullable=False, default="pending")  # pending | approved | denied | failed
-    note = Column(Text, nullable=True)  # Denial reason or generation error
+    status = Column(String(20), nullable=False, default="pending")
+    note = Column(Text, nullable=True)
     decided_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     decided_at = Column(DateTime(timezone=True), nullable=True)

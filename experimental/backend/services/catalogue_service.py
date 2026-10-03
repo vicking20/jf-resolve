@@ -76,7 +76,6 @@ class CatalogueService:
                 catalogue = Catalogue(
                     name=cat_def["name"],
                     slug=cat_def["id_slug"],
-                    # description=f"Auto-synced {cat_def['source']} {cat_def['type']}s from TMDB",
                     description=f"Synced {cat_def['name']}.",
                 )
                 self.db.add(catalogue)
@@ -104,7 +103,6 @@ class CatalogueService:
         """Fetch and populate items for a specific catalogue"""
         log_service.info(f"Syncing catalogue: {cat_def['name']}")
 
-        # 1. Fetch from TMDB
         results = []
         try:
             if cat_def["source"] == "trending":
@@ -125,7 +123,6 @@ class CatalogueService:
             )
             return
 
-        # 2. Get catalogue record
         cat_result = await self.db.execute(
             select(Catalogue).where(Catalogue.slug == cat_def["id_slug"])
         )
@@ -133,17 +130,13 @@ class CatalogueService:
         if not catalogue:
             return
 
-        # 3. Process items
-        # We'll replace the entire catalogue content for these system ones
-        # and keep the ones that are valid.
 
-        # Clear existing items first for a clean sync
         await self.db.execute(
             delete(CatalogueItem).where(CatalogueItem.catalogue_id == catalogue.id)
         )
 
         position = 0
-        for item_data in results[:10]:  # Keep top 10
+        for item_data in results[:10]:
             try:
                 if not item_data:
                     continue
@@ -151,16 +144,12 @@ class CatalogueService:
                 if not tmdb_id:
                     continue
 
-                # Fetch full details for ratings and external IDs
                 details = await tmdb.get_details(tmdb_id, cat_def["type"])
                 if not details:
                     continue
 
-                # Parse into our standard format
                 parsed = tmdb.parse_media_item(details, cat_def["type"])
 
-                # Check if item exists in MediaItem (via external ID)
-                # Track if this is a new item for image caching decision
                 tmdb_id_str = str(tmdb_id)
                 stmt = select(MediaExternalId).where(
                     MediaExternalId.provider == "tmdb",
@@ -174,7 +163,6 @@ class CatalogueService:
                     tmdb_id, parsed, cat_def["type"]
                 )
 
-                # Add to catalogue
                 cat_item = CatalogueItem(
                     catalogue_id=catalogue.id,
                     media_uuid=media_item.uuid,
@@ -183,12 +171,9 @@ class CatalogueService:
                 self.db.add(cat_item)
                 position += 1
 
-                # Trigger background image caching for new items only
-                # Existing items likely have cached images already
                 if is_new_item:
                     import asyncio
                     
-                    # Use unified image_paths structure
                     images = parsed.get("image_paths", {})
                     poster = images.get("poster")
                     if poster:
@@ -220,7 +205,6 @@ class CatalogueService:
         """Get existing MediaItem or create a non-persisted shell"""
         tmdb_id_str = str(tmdb_id)
 
-        # Check external IDs
         stmt = select(MediaExternalId).where(
             MediaExternalId.provider == "tmdb",
             MediaExternalId.external_id == tmdb_id_str,
@@ -229,18 +213,15 @@ class CatalogueService:
         ext_id_record = res.scalar_one_or_none()
 
         if ext_id_record:
-            # Item exists, fetch the MediaItem
             stmt = select(MediaItem).where(MediaItem.uuid == ext_id_record.media_uuid)
             item_res = await self.db.execute(stmt)
             item = item_res.scalar_one()
 
-            # Update metadata blob/image paths for both movies and TV to ensure we have overview and ratings
             new_images = parsed_data.get("image_paths", {})
             if new_images:
                 existing_images = item.image_paths or {}
                 item.image_paths = {**existing_images, **new_images}
                 
-            # Update with full parsed data to ensure overview, ratings, and genres are present
             new_metadata = parsed_data.get("metadata", {})
             if new_metadata:
                 existing_meta = item.metadata_blob or {}
@@ -248,13 +229,10 @@ class CatalogueService:
 
             return item
 
-        # Create new shell
         m_type = MediaType.MOVIE if media_type == "movie" else MediaType.TV
 
-        # Use unified image_paths from parsed data
         image_paths = parsed_data.get("image_paths", {})
         
-        # Use nested metadata from unified structure
         metadata_blob = parsed_data.get("metadata", {})
 
         new_item = MediaItem(
@@ -263,13 +241,12 @@ class CatalogueService:
             original_title=parsed_data.get("original_title"),
             year=parsed_data.get("year"),
             image_paths=image_paths,
-            metadata_blob=metadata_blob,  # Store full metadata blob
-            is_persisted=False,  # Shell item
+            metadata_blob=metadata_blob,
+            is_persisted=False,
         )
         self.db.add(new_item)
-        await self.db.flush()  # Get UUID
+        await self.db.flush()
 
-        # Add external ID
         new_ext_id = MediaExternalId(
             media_uuid=new_item.uuid, provider="tmdb", external_id=tmdb_id_str
         )

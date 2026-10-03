@@ -43,7 +43,6 @@ async def stream_by_source(
     - Supports multiple audio tracks
     - Auto-skips invalid streams (< 2 min) for TMDB content only
     """
-    # Get source from DB
     from sqlalchemy import select
 
     result = await db.execute(
@@ -55,7 +54,6 @@ async def stream_by_source(
         raise HTTPException(status_code=404, detail="Source not found")
     await ensure_media_uuid_allowed(db, current_user, source.media_uuid)
 
-    # Load transcode settings
     settings = SettingsManager(db)
     await settings.load_cache()
 
@@ -69,7 +67,6 @@ async def stream_by_source(
         "hls_segment_duration": await settings.get("hls_segment_duration", 4),
     }
 
-    # Get User-Agent for client detection
     user_agent = request.headers.get("user-agent", "")
 
     log_service.info(
@@ -77,7 +74,6 @@ async def stream_by_source(
         f"audio_track={audio_track}, force_transcode={force_transcode}"
     )
 
-    # Get stream response with transcoding support
     return await stream_service.get_stream_response(
         source_path=source.file_path,
         range_header=range_header,
@@ -107,7 +103,6 @@ async def stream_best_source(
     Stream media from best available source with validation and failover.
     Uses unified identifier and SourceOrchestrator.
     """
-    # 1. Resolve media item (Hybrid)
     from ..services.settings_manager import SettingsManager
     from ..services.tmdb_service import TMDBService
 
@@ -122,7 +117,6 @@ async def stream_best_source(
         raise HTTPException(status_code=404, detail="Media not found")
     await ensure_item_allowed(db, current_user, item)
 
-    # 2. Get prioritized sources
     sources_data = await source_orchestrator.get_sources(
         db=db,
         media_uuid=item.get("uuid"),
@@ -135,14 +129,11 @@ async def stream_best_source(
         episode=episode,
     )
 
-    # 3. Aggregate sources
     all_sources = []
 
-    # Local sources (DB + JIT)
     for source in sources_data["local"]:
         all_sources.append({"type": "local", "data": source, "priority": 0})
 
-    # External streams
     for addon_name, streams in sources_data["streams"].items():
         for stream in streams:
             all_sources.append(
@@ -152,10 +143,8 @@ async def stream_best_source(
     if not all_sources:
         raise HTTPException(status_code=404, detail="No sources available")
 
-    # Sort by priority
     all_sources.sort(key=lambda x: x["priority"])
 
-    # 4. Transcode settings
     await settings.load_cache()
     transcode_settings = {
         "transcode_enabled": await settings.get("transcode_enabled", True),
@@ -170,7 +159,6 @@ async def stream_best_source(
     min_duration = await settings.get("min_valid_duration_seconds", 120)
     user_agent = request.headers.get("user-agent", "")
 
-    # Try sources starting from source_index
     for idx, source_entry in enumerate(all_sources[source_index:], start=source_index):
         source_data = source_entry["data"]
         source_path = source_data.get("file_path") or source_data.get("url")
@@ -182,7 +170,6 @@ async def stream_best_source(
             f"Trying source {idx}: {source_entry['type']} - {source_path[:100]}"
         )
 
-        # Validate stream
         if auto_skip_invalid:
             stream_url = await stream_service._resolve_source(source_path)
             validation = await FFprobeService.validate_stream(
@@ -194,9 +181,7 @@ async def stream_best_source(
                 )
                 continue
 
-        # Try streaming
         try:
-            # If item is transient, we should probably persist it now that we're playing
             if not item.get("is_persisted"):
                 await resolver.persist(db, item)
                 await db.commit()
@@ -238,7 +223,6 @@ async def get_source_info(
         raise HTTPException(status_code=404, detail="Source not found")
     await ensure_media_uuid_allowed(db, current_user, source.media_uuid)
 
-    # Resolve and probe stream
     stream_url = await stream_service._resolve_source(source.file_path)
     probe_info = await FFprobeService.probe_stream(stream_url)
 
@@ -300,15 +284,12 @@ async def serve_hls_segment(
     """
     from fastapi.responses import Response
 
-    # Only serve plain file names belonging to a live session; stream_id and
-    # file_name come from the URL and must never escape the HLS directory.
     if not HLS_FILE_NAME.fullmatch(file_name) or not transcode_manager.touch_stream(stream_id):
         raise HTTPException(status_code=404, detail="Segment not found")
     output_dir = transcode_manager.get_hls_output_dir(stream_id)
     file_path = output_dir / file_name
 
     if not file_path.exists():
-        # FFmpeg might be in the middle of renaming the playlist file. Give it a tiny moment.
         if file_name.endswith(".m3u8"):
             import asyncio
             for _ in range(5):
@@ -321,15 +302,11 @@ async def serve_hls_segment(
 
     common_headers = {}
 
-    # Determine media type and serve
     if file_name.endswith(".m3u8"):
         media_type = "application/vnd.apple.mpegurl"
-        # Read playlist into memory to avoid race conditions with FFmpeg writes
-        # FFmpeg writes to .tmp then renames, which can cause brief empty reads
         try:
             content = file_path.read_bytes()
             if len(content) == 0:
-                # File is empty (likely mid-rename), wait briefly and retry
                 import asyncio
 
                 await asyncio.sleep(0.1)
@@ -339,7 +316,6 @@ async def serve_hls_segment(
 
             content = content_str.encode("utf-8")
 
-            # Playlists should not be cached as they update frequently
             headers = {
                 **common_headers,
                 "Cache-Control": "no-cache",
@@ -350,7 +326,6 @@ async def serve_hls_segment(
             raise HTTPException(status_code=500, detail="Error reading playlist")
     elif file_name.endswith(".ts"):
         media_type = "video/mp2t"
-        # Seeking replaces these filenames, so clients must fetch fresh bytes.
         headers = {
             **common_headers,
             "Cache-Control": "no-store",
@@ -471,8 +446,7 @@ async def get_live_subtitles(
         try:
             text = path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            continue  # A seek can replace the output directory.
-        # Only expose complete cues while FFmpeg is still writing the last file.
+            continue
         blocks = text.replace("\r", "").split("\n\n")
         complete = blocks if text.endswith("\n") else blocks[:-1]
         cues.extend(block.strip() for block in complete if "-->" in block and len(block.strip().splitlines()) >= 2)

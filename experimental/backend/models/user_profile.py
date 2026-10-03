@@ -12,11 +12,11 @@ from ..core.database import Base
 class ContentRating(str, enum.Enum):
     """Content rating preferences for parental controls"""
 
-    ALL = "all"  # All content
-    FAMILY = "family"  # G, PG
-    TEEN = "teen"  # PG-13
-    MATURE = "mature"  # R
-    ADULT = "adult"  # NC-17, Unrated
+    ALL = "all"
+    FAMILY = "family"
+    TEEN = "teen"
+    MATURE = "mature"
+    ADULT = "adult"
 
 
 class UserProfile(Base):
@@ -35,12 +35,10 @@ class UserProfile(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
 
-    # Profile customization
-    display_name = Column(String(100))  # Optional display name
-    avatar_url = Column(Text)  # Profile picture URL
-    bio = Column(Text)  # User bio
+    display_name = Column(String(100))
+    avatar_url = Column(Text)
+    bio = Column(Text)
 
-    # Parental controls
     max_content_rating = Column(
         SQLEnum(ContentRating),
         default=ContentRating.ALL,
@@ -48,28 +46,22 @@ class UserProfile(Base):
     )
     enable_parental_controls = Column(Boolean, default=False)
 
-    # Preferences
-    preferred_language = Column(String(10), default="en")  # ISO 639-1
-    preferred_quality = Column(String(10), default="1080p")  # Default stream quality
-    auto_play = Column(Boolean, default=True)  # Auto-play next episode
+    preferred_language = Column(String(10), default="en")
+    preferred_quality = Column(String(10), default="1080p")
+    auto_play = Column(Boolean, default=True)
     show_adult_content = Column(Boolean, default=True)
 
-    # UI Preferences
-    theme = Column(String(20), default="dark")  # UI theme
-    layout = Column(String(20), default="grid")  # Library layout (grid, list)
+    theme = Column(String(20), default="dark")
+    layout = Column(String(20), default="grid")
 
-    # Statistics
     total_watch_time_minutes = Column(Integer, default=0)
     total_items_watched = Column(Integer, default=0)
 
-    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationships
-    # user = relationship("User", back_populates="profile")
 
     def __repr__(self):
         return f"<UserProfile user_id={self.user_id} display_name={self.display_name}>"

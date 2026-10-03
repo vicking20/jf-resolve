@@ -1,20 +1,18 @@
 function homePage() {
   return {
-    // Data
+
     disableBackdrop: false,
     catalogues: [],
-    catalogueItems: {}, // Map<catalogue_id, Array<Item>>
+    catalogueItems: {},
     isReady: false,
 
-    // Slideshow
     heroItems: [],
     heroIndex: 0,
     heroVisible: true,
     heroTransitionTimer: null,
     slideshowTimer: null,
-    previewItem: null, // Temporary hover preview
+    previewItem: null,
 
-    // UI State
     loading: true,
     processing: false,
     selectedItem: null,
@@ -34,14 +32,13 @@ function homePage() {
 
     async init() {
       try {
-        // Start Slideshow Timer (8 seconds)
+
         this.slideshowTimer = setInterval(() => {
           if (this.heroItems.length > 1 && !this.previewItem) {
             this.setHero((this.heroIndex + 1) % this.heroItems.length);
           }
         }, 8000);
 
-        // Check settings for backdrop preference
         const settingsRes = await fetch("/api/settings/");
         if (settingsRes.ok) {
           const data = await settingsRes.json();
@@ -51,7 +48,6 @@ function homePage() {
             false;
         }
 
-        // Load plugin catalogues and user content
         await Promise.all([
           this.fetchCatalogues(),
           this.loadContinueWatching(),
@@ -64,7 +60,6 @@ function homePage() {
             this.catalogues.map((cat) => this.loadCatalogueItems(cat.id)),
           );
 
-          // Set Initial Hero Items (Top 6 from first non-empty catalogue)
           for (const cat of this.catalogues) {
             const items = this.catalogueItems[cat.id];
             if (items && items.length > 0) {
@@ -74,7 +69,7 @@ function homePage() {
           }
 
           if (this.heroItems.length > 0 && !this.disableBackdrop) {
-            // Use setTimeout to ensure the event loop is clear/listeners are ready
+
             setTimeout(() => {
               this.dispatchBackgroundUpdate();
             }, 100);
@@ -108,7 +103,7 @@ function homePage() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {
-            // Adapt slug to id and pre-initialize
+
             this.catalogues = data.map((cat) => ({ ...cat, id: cat.slug }));
             this.catalogues.forEach((cat) => {
               if (cat && cat.id) {
@@ -191,7 +186,7 @@ function homePage() {
     },
 
     formatProgress(item) {
-      // Handle continue watching items with nested media
+
       const media = item.media || item;
       const mediaType = media.media_type || item.media_type;
 
@@ -204,7 +199,6 @@ function homePage() {
     resumePlayback(item) {
       const time = Math.floor(item.position_seconds || item.current_time || 0);
 
-      // Continue watching items have nested media object from API
       const media = item.media || item;
       const type = media.media_type || item.media_type || "movie";
       const identifier =
@@ -429,7 +423,7 @@ function homePage() {
           Alpine.store("notifications").success(
             `"${this.selectedItem.title || this.selectedItem.name}" has been added!`,
           );
-          this.selectedItem.in_library = true; // Optimistic update
+          this.selectedItem.in_library = true;
           this.selectedItem = null;
         } else {
           const error = await response.json();
@@ -470,7 +464,7 @@ function homePage() {
               Alpine.store("notifications").success("Removed from library.");
               this.selectedItem.in_library = false;
               this.selectedItem = null;
-              // Refresh catalogue
+
               await this.fetchCatalogues();
             } else {
               const error = await response.json();
@@ -487,11 +481,9 @@ function homePage() {
       );
     },
 
-    // Unified notifications used via Alpine.store("notifications")
   };
 }
 
-// Register with Alpine
 document.addEventListener("alpine:init", () => {
   Alpine.data("homePage", homePage);
 });

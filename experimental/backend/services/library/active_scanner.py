@@ -67,11 +67,9 @@ class ActiveScanner:
         """
         log_service.info(f"Starting active scan of {library_path.path}")
 
-        # Check if path exists
         if not os.path.exists(library_path.path):
             raise FileNotFoundError(f"Library path not found: {library_path.path}")
 
-        # Find all video files
         video_files = await self.base.find_video_files_async(library_path.path)
         log_service.info(f"Found {len(video_files)} video files in {library_path.path}")
 
@@ -79,7 +77,6 @@ class ActiveScanner:
             job.total_files = len(video_files)
             await self.db.commit()
 
-        # Extract metadata for all files
         metadata_list = []
         for file_path in video_files:
             filename = os.path.basename(file_path)
@@ -88,11 +85,9 @@ class ActiveScanner:
             )
             metadata_list.append((file_path, metadata))
 
-        # Prefetch TMDB results if needed for movies/TV
         if library_path.media_type in ["movie", "tv"] and self.tmdb:
             await self._prefetch_tmdb_results(metadata_list, library_path.media_type)
 
-        # Process files in batches with rate limiting
         new_count = 0
         updated_count = 0
 
@@ -104,20 +99,17 @@ class ActiveScanner:
 
             try:
                 async with AsyncSessionLocal() as db:
-                    # Check if file already exists
                     result = await db.execute(
                         select(MediaSourceModel).where(MediaSourceModel.file_path == file_path)
                     )
                     existing_source = result.scalar_one_or_none()
 
                     if existing_source and not force_rescan:
-                        # Update verification timestamp
                         existing_source.last_verified = datetime.now(timezone.utc)
                         existing_source.is_available = True
                         await db.commit()
                         return {"updated": True}
                     
-                    # New file or force rescan - process it
                     created = await self._process_video_file(
                         db=db,
                         file_path=file_path,
@@ -125,7 +117,6 @@ class ActiveScanner:
                         existing_source=existing_source,
                         batch_proc=batch_proc,
                     )
-                    # Commit changes in this isolated session
                     await db.commit()
                     
                     if created:
@@ -137,14 +128,6 @@ class ActiveScanner:
 
         async def report_progress(processed, total, new, updated):
             """Report progress to job"""
-            # Use main session for job updates effectively lock it briefly? 
-            # Or just fire and forget if we trust concurrency?
-            # Better to use a separate short-lived session or just keep updating the passed job 
-            # if attached to self.db, but self.db is not thread-safe for gathered tasks.
-            # However, report_progress is called sequentially by BatchProcessor usually?
-            # BatchProcessor awaits gather(), simplifies things.
-            # Wait, BatchProcessor calls report_progress AFTER `await asyncio.gather`.
-            # So main thread is free. We can use self.db safely here if not in parallel.
             try:
                 if job:
                     job.processed_files = processed
@@ -155,7 +138,6 @@ class ActiveScanner:
             except Exception as e:
                 log_service.warning(f"Failed to update progress: {e}")
 
-        # Process all files
         result = await self.batch_processor.process_files(
             files=video_files,
             processor_func=process_file,
@@ -166,11 +148,9 @@ class ActiveScanner:
         new_count = result["new_items"]
         updated_count = result["updated_items"]
 
-        # Update last scanned timestamp
         library_path.last_scanned = datetime.now(timezone.utc)
         await self.db.commit()
 
-        # Cleanup removed files
         current_file_paths = set(video_files)
         removed_count = await self.cleanup.cleanup_removed_files(
             library_path.id, current_file_paths
@@ -214,7 +194,6 @@ class ActiveScanner:
         if not os.path.exists(library_path.path):
             raise FileNotFoundError(f"Library path not found: {library_path.path}")
 
-        # Get current files from filesystem
         current_files = await self.base.find_video_files_async(library_path.path)
         current_file_info = {}
 
@@ -228,14 +207,12 @@ class ActiveScanner:
             except OSError:
                 pass
 
-        # Get previous manifest from DB
         result = await self.db.execute(
             select(FileManifest).where(FileManifest.library_path_id == library_path.id)
         )
         manifest_entries = result.scalars().all()
         manifest_dict = {entry.file_path: entry for entry in manifest_entries}
 
-        # Calculate delta
         current_paths = set(current_file_info.keys())
         manifest_paths = set(manifest_dict.keys())
 
@@ -243,13 +220,11 @@ class ActiveScanner:
         removed_files = manifest_paths - current_paths
         potentially_modified = current_paths & manifest_paths
 
-        # Check for actually modified files
         modified_files = []
         for file_path in potentially_modified:
             manifest_entry = manifest_dict[file_path]
             current_info = current_file_info[file_path]
 
-            # Check if size or mtime changed
             if (
                 manifest_entry.file_size != current_info["size"]
                 or manifest_entry.modified_time != current_info["mtime"]
@@ -265,7 +240,6 @@ class ActiveScanner:
             job.total_files = len(added_files) + len(modified_files)
             await self.db.commit()
 
-        # Process added files
         new_count = 0
         for file_path in added_files:
             try:
@@ -279,7 +253,6 @@ class ActiveScanner:
                 if created:
                     new_count += 1
 
-                # Add to manifest
                 info = current_file_info[file_path]
                 manifest_entry = FileManifest(
                     library_path_id=library_path.id,
@@ -300,11 +273,9 @@ class ActiveScanner:
                 if job:
                     job.failed_files += 1
 
-        # Process modified files
         updated_count = 0
         for file_path in modified_files:
             try:
-                # Re-process the file
                 result = await self.db.execute(
                     select(MediaSourceModel).where(
                         MediaSourceModel.file_path == file_path
@@ -322,7 +293,6 @@ class ActiveScanner:
                 if not created:
                     updated_count += 1
 
-                # Update manifest
                 manifest_entry = manifest_dict[file_path]
                 info = current_file_info[file_path]
                 manifest_entry.file_size = info["size"]
@@ -339,28 +309,23 @@ class ActiveScanner:
                 if job:
                     job.failed_files += 1
 
-        # Process removed files
         removed_count = 0
         for file_path in removed_files:
             try:
-                # Delete from manifest
                 manifest_entry = manifest_dict[file_path]
                 await self.db.delete(manifest_entry)
 
-                # Cleanup media
                 await self.cleanup.cleanup_single_file(file_path)
                 removed_count += 1
 
             except Exception as e:
                 log_service.error(f"Error removing file {file_path}: {e}")
 
-        # Update manifest for unchanged files (last_seen timestamp)
         unchanged_files = potentially_modified - set(modified_files)
         for file_path in unchanged_files:
             manifest_entry = manifest_dict[file_path]
             manifest_entry.last_seen = datetime.now(timezone.utc)
 
-        # Update library path timestamp
         library_path.last_scanned = datetime.now(timezone.utc)
         await self.db.commit()
 
@@ -427,20 +392,16 @@ class ActiveScanner:
             return True
         filename = os.path.basename(file_path)
 
-        # Extract metadata from filename
         metadata = self.base.extract_metadata_from_filename(
             filename, library_path.media_type
         )
 
-        # Get file info
         file_info = await self.base.get_file_info(file_path)
         if metadata.get("quality"):
             file_info["resolution"] = metadata["quality"]
 
-        # Try TMDB matching if needed
         tmdb_data = None
         if library_path.media_type in ["movie", "tv"] and self.tmdb:
-            # Use batch processor for rate limiting if available
             if batch_proc:
                 tmdb_data = await batch_proc.with_tmdb_limit(
                     self.base.match_with_tmdb(
@@ -460,17 +421,14 @@ class ActiveScanner:
                     episode=metadata.get("episode"),
                 )
 
-        # Create or update MediaItem
         media_item = None
 
         if tmdb_data:
-            # Matched with TMDB - create persisted item
             if (
                 library_path.media_type == "tv"
                 and metadata.get("season")
                 and metadata.get("episode")
             ):
-                # TV episode - create series and episode
                 media_item = await self._create_tv_episode(
                     db=db,
                     series_data=tmdb_data,
@@ -479,11 +437,9 @@ class ActiveScanner:
                     file_path=file_path,
                 )
             else:
-                # Movie or TV series - persist to library
                 media_item = await self.resolver.persist(db, tmdb_data, is_persisted=True)
 
         else:
-            # No TMDB match - create as user content
             media_item = await self._create_user_media(
                 db, metadata, file_path, library_path
             )
@@ -491,7 +447,6 @@ class ActiveScanner:
         if not media_item:
             return False
 
-        # Create or update MediaSource
         source_type = self.base.get_source_type(file_path)
 
         source = existing_source
@@ -502,14 +457,12 @@ class ActiveScanner:
             source = result.scalar_one_or_none()
 
         if source:
-            # Update existing source
             source.media_uuid = media_item.uuid
             source.file_size = file_info.get("size")
             source.resolution = file_info.get("resolution")
             source.last_verified = datetime.now(timezone.utc)
             source.is_available = True
         else:
-            # Create new source
             source = MediaSourceModel(
                 media_uuid=media_item.uuid,
                 source_type=source_type,
@@ -539,10 +492,8 @@ class ActiveScanner:
         1. Persist the series (if not exists)
         2. Create episode entry with parent_id pointing to series
         """
-        # First, persist the series
         series_item = await self.resolver.persist(db, series_data)
 
-        # Check if episode already exists
         result = await db.execute(
             select(MediaItemModel).where(
                 MediaItemModel.parent_id == series_item.uuid,
@@ -555,11 +506,9 @@ class ActiveScanner:
         if existing_episode:
             return existing_episode
 
-        # Create episode entry
         episode_uuid = str(uuid_lib.uuid4())
         episode_title = f"S{season_number:02d}E{episode_number:02d}"
 
-        # Try to get episode title from series metadata if available
         if series_data.get("metadata"):
             seasons = series_data["metadata"].get("seasons", [])
             for season in seasons:
@@ -600,7 +549,6 @@ class ActiveScanner:
         - Video series with folder structure (video_series type)
         - Local images (poster.jpg, backdrop.jpg in same folder)
         """
-        # Check if already exists via source
         result = await db.execute(
             select(MediaItemModel)
             .join(MediaSourceModel, MediaSourceModel.media_uuid == MediaItemModel.uuid)
@@ -610,13 +558,11 @@ class ActiveScanner:
         if existing:
             return existing
 
-        # Determine media type and check for series structure
         media_type = library_path.media_type
         parent_item = None
         season_number = metadata.get("season")
         episode_number = metadata.get("episode")
 
-        # Check for video series structure
         if media_type in ["video", "video_series"]:
             (
                 is_series,
@@ -625,7 +571,6 @@ class ActiveScanner:
             ) = self.base.detect_video_series_structure(file_path, library_path.path)
 
             if is_series:
-                # Get or create video series
                 result = await db.execute(
                     select(MediaItemModel).where(
                         MediaItemModel.title == series_name,
@@ -635,10 +580,8 @@ class ActiveScanner:
                 parent_item = result.scalar_one_or_none()
 
                 if not parent_item:
-                    # Create the series item
                     series_uuid = str(uuid_lib.uuid4())
 
-                    # Look for series-level images
                     series_dir = os.path.join(library_path.path, series_name)
                     series_images = self.base.find_local_images(series_dir)
 
@@ -652,16 +595,13 @@ class ActiveScanner:
                     db.add(parent_item)
                     await db.flush()
 
-                # This file is part of the series
                 media_type = MediaTypeEnum.VIDEO
                 if detected_season:
                     season_number = detected_season
 
-        # Look for local images in the file's directory
         file_dir = os.path.dirname(file_path)
         image_paths = self.base.find_local_images(file_dir)
 
-        # Create new MediaItem
         media_uuid = str(uuid_lib.uuid4())
         item = MediaItemModel(
             uuid=media_uuid,
@@ -683,7 +623,6 @@ class ActiveScanner:
         try:
             await db.flush()
         except Exception as e:
-            # Skip this item if flush fails (likely due to concurrent access)
             log_service.warning(f"Flush failed for {file_path}, skipping: {e}")
             return None
         return item
@@ -697,7 +636,6 @@ class ActiveScanner:
         if not self.tmdb:
             return
 
-        # Collect unique search queries
         search_queries = set()
         for file_path, metadata in metadata_list:
             if metadata and metadata.get("title"):
@@ -708,7 +646,6 @@ class ActiveScanner:
         if not search_queries:
             return
 
-        # Prefetch in parallel
         search_tasks = []
         for title, year, mt in search_queries:
             if mt == "movie":

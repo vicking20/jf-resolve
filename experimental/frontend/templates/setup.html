@@ -16,7 +16,6 @@ block navbar %}{% endblock %} {% block content %}
                 <span class="text-primary">JF</span>-Resolve Setup
             </h2>
 
-            <!-- Progress Steps -->
             <ul class="steps steps-vertical lg:steps-horizontal w-full mb-6">
                 <li class="step" :class="step >= 1 ? 'step-primary' : ''">
                     Welcome
@@ -35,7 +34,6 @@ block navbar %}{% endblock %} {% block content %}
                 </li>
             </ul>
 
-            <!-- Step 1: Welcome -->
             <div x-show="step === 1" x-cloak>
                 <h3 class="text-xl font-bold mb-4">Welcome to JF-Resolve!</h3>
                 <p class="mb-4">
@@ -48,7 +46,6 @@ block navbar %}{% endblock %} {% block content %}
                 </button>
             </div>
 
-            <!-- Step 2: Mode -->
             <div x-show="step === 2" x-cloak>
                 <h3 class="text-xl font-bold mb-4">How will you use JF-Resolve?</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -67,7 +64,6 @@ block navbar %}{% endblock %} {% block content %}
                 </div>
             </div>
 
-            <!-- Step 3: Admin Account -->
             <div x-show="step === 3" x-cloak>
                 <h3 class="text-xl font-bold mb-4">Create Admin Account</h3>
                 <div class="form-control">
@@ -94,7 +90,6 @@ block navbar %}{% endblock %} {% block content %}
                 </div>
             </div>
 
-            <!-- Step 4: Connections -->
             <div x-show="step === 4" x-cloak>
                 <h3 class="text-xl font-bold mb-4">Connections</h3>
                 <p class="mb-4 text-sm opacity-70">
@@ -131,7 +126,6 @@ block navbar %}{% endblock %} {% block content %}
                 </div>
             </div>
 
-            <!-- Step 5: Complete -->
             <div x-show="step === 5" x-cloak>
                 <h3 class="text-xl font-bold mb-4">Setup Complete!</h3>
                 <p class="mb-4">

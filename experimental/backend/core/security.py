@@ -15,22 +15,16 @@ from .logging import get_logger
 
 logger = get_logger(__name__)
 
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# HTTP Bearer token scheme
 security = HTTPBearer()
 
-# Rate limiter
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=[f"{settings.RATE_LIMIT_PER_MINUTE}/minute"]
     if settings.RATE_LIMIT_ENABLED
     else [],
 )
-
-
-# ===== Password Hashing =====
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -45,9 +39,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         True if password matches, False otherwise
     """
     return pwd_context.verify(plain_password, hashed_password)
-
-
-# ===== JWT Token Management =====
 
 
 def create_access_token(
@@ -108,21 +99,6 @@ def decode_token(token: str) -> Dict[str, Any]:
         raise AuthenticationError(f"Invalid token: {str(e)}")
 
 
-# ===== CSRF Protection =====
-
-
-# ===== Rate Limiting =====
-
-
-# ===== API Key Management =====
-
-
-# ===== Security Headers =====
-
-
-# ===== Input Sanitization =====
-
-
 def sanitize_filename(filename: str) -> str:
     """
     Sanitize a filename to prevent path traversal
@@ -133,7 +109,6 @@ def sanitize_filename(filename: str) -> str:
     Returns:
         Sanitized filename
     """
-    # Remove path separators and dangerous characters
     dangerous_chars = ["/", "\\", "..", "\0", "<", ">", ":", '"', "|", "?", "*"]
     sanitized = filename
 
@@ -141,9 +116,6 @@ def sanitize_filename(filename: str) -> str:
         sanitized = sanitized.replace(char, "")
 
     return sanitized.strip()
-
-
-# ===== Addon Security =====
 
 
 def verify_addon_token(token: str) -> str:

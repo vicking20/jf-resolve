@@ -18,7 +18,6 @@ class FileManifest(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Association
     library_path_id = Column(
         Integer,
         ForeignKey("library_paths.id", ondelete="CASCADE"),
@@ -26,12 +25,10 @@ class FileManifest(Base):
         index=True,
     )
 
-    # File information
     file_path = Column(String(1000), unique=True, nullable=False, index=True)
     file_size = Column(BigInteger, nullable=True)
     modified_time = Column(DateTime(timezone=True), nullable=True)
 
-    # Tracking
     last_seen = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

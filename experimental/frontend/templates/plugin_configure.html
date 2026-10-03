@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto mt-4" x-data="pluginConfig('{{ plugin.id }}')">
-    <!-- Breadcrumbs -->
+
     <div class="text-sm breadcrumbs mb-6">
         <ul>
             <li><a href="/settings">Settings</a></li>
@@ -28,7 +28,7 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Left: Plugin Info -->
+
         <div class="md:col-span-1">
             <div class="card bg-base-200 shadow-xl">
                 <div class="card-body">
@@ -67,14 +67,13 @@
             </div>
         </div>
 
-        <!-- Right: Config UI -->
         <div class="md:col-span-2">
             <div class="card bg-base-200 shadow-xl overflow-visible">
                 <div class="card-body">
                     <h2 class="card-title mb-4">Configuration</h2>
 
                     <div id="plugin-ui-container" class="min-h-[200px]">
-                        <!-- Plugin HTML will be injected here -->
+
                         <div x-show="loading" class="flex justify-center py-12">
                             <span class="loading loading-spinner loading-lg text-primary"></span>
                         </div>

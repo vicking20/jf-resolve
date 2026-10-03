@@ -79,8 +79,6 @@ async def get_catalogue_details(
     if not cat:
         raise HTTPException(status_code=404, detail="Catalogue not found")
 
-    # In a real app, we'd join with MediaItem
-    # For now, return basic info. The items will be fetched separately or via join.
     return cat
 
 
@@ -103,7 +101,6 @@ async def get_catalogue_items(
     )
     items = result.scalars().all()
     
-    # Convert to expected format for frontend
     formatted_items = [item.to_dict() for item in items]
     
     return formatted_items
@@ -123,7 +120,6 @@ async def add_item_to_catalogue(
     if not cat:
         raise HTTPException(status_code=404, detail="Catalogue not found")
 
-    # Check if already exists
     check_stmt = select(CatalogueItem).where(
         CatalogueItem.catalogue_id == cat.id, CatalogueItem.media_uuid == media_uuid
     )

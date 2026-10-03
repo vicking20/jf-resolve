@@ -12,20 +12,17 @@ document.addEventListener("alpine:init", () => {
         async loadPluginData() {
             this.loading = true;
             try {
-                // 1. Load UI HTML
+
                 const uiResponse = await fetch(`/api/addons/${this.pluginId}/ui`);
                 if (!uiResponse.ok) throw new Error("Failed to load plugin UI");
                 const uiHtml = await uiResponse.text();
 
-                // Inject HTML
                 this.$refs.uiContainer.innerHTML = uiHtml;
 
-                // 2. Load Current Config
                 const configResponse = await fetch(`/api/addons/${this.pluginId}/config`);
                 if (!configResponse.ok) throw new Error("Failed to load plugin config");
                 this.config = await configResponse.json();
 
-                // 3. Populate Fields
                 this.populateFields();
             } catch (error) {
                 console.error("Error loading plugin data:", error);
@@ -36,7 +33,7 @@ document.addEventListener("alpine:init", () => {
         },
 
         populateFields() {
-            // Find all inputs, selects, textareas in the container
+
             const container = this.$refs.uiContainer;
             const inputs = container.querySelectorAll("input, select, textarea");
 
@@ -56,7 +53,7 @@ document.addEventListener("alpine:init", () => {
             this.saving = true;
 
             try {
-                // Collect data from fields
+
                 const container = this.$refs.uiContainer;
                 const inputs = container.querySelectorAll("input, select, textarea");
                 const newConfig = { ...this.config };

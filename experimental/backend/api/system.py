@@ -19,10 +19,6 @@ from ..services.tmdb_service import TMDBService
 router = APIRouter(prefix="/api/system", tags=["system"])
 
 
-
-
-
-
 @router.post("/tasks/cleanup-cache")
 async def cleanup_cache_manual(
     days: int = Query(30, ge=0),
@@ -37,7 +33,6 @@ async def cleanup_cache_manual(
 
     log_service.info(f"Manual cache cleanup requested (days={days})")
     try:
-        # Collect protected IDs (Any TMDB ID in our database should be protected if it's in library/watchlist)
         protected_ids = set()
         
         result = await db.execute(
@@ -55,9 +50,6 @@ async def cleanup_cache_manual(
     except Exception as e:
         log_service.error(f"Manual cache cleanup failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
 
 
 @router.post("/tasks/catalogue-sync")
@@ -87,23 +79,19 @@ async def get_system_resources(current_user: User = Depends(get_current_admin_us
     import psutil
     import os
     
-    # Get JF-Resolve process
     current_process = psutil.Process(os.getpid())
     
-    # Get JF-Resolve process metrics
     process_cpu = current_process.cpu_percent(interval=1)
     process_memory_info = current_process.memory_info()
-    process_memory_mb = process_memory_info.rss / (1024**2)  # Resident Set Size in MB
+    process_memory_mb = process_memory_info.rss / (1024**2)
     process_memory_percent = current_process.memory_percent()
     process_num_threads = current_process.num_threads()
     
-    # Get system-wide metrics for comparison
     system_cpu = psutil.cpu_percent(interval=1)
     system_memory = psutil.virtual_memory()
     system_memory_used_gb = system_memory.used / (1024**3)
     system_memory_total_gb = system_memory.total / (1024**3)
     
-    # Get disk usage (primary disk)
     disk = psutil.disk_usage('/')
     disk_used_gb = disk.used / (1024**3)
     disk_total_gb = disk.total / (1024**3)
@@ -157,7 +145,6 @@ async def health_check(
         "overall": "healthy",
     }
 
-    # Check TMDB API
     tmdb_key = await settings.get("tmdb_api_key")
     if tmdb_key:
         try:
@@ -172,11 +159,9 @@ async def health_check(
         health["tmdb"] = {"status": "not_configured", "message": "API key not set"}
         health["overall"] = "degraded"
 
-    # Check Stremio manifest
     manifest_url = await settings.get("stremio_manifest_url")
     if manifest_url:
         try:
-            # Normalize URL for health check
             check_url = manifest_url
             if check_url.startswith("stremio://"):
                 check_url = check_url.replace("stremio://", "https://", 1)
@@ -245,14 +230,12 @@ async def export_library(
 
     export_data = []
 
-    # Export all persisted items
     result = await db.execute(
         select(MediaItem).where(MediaItem.is_persisted == True)
     )
     items = result.scalars().all()
     
     for item in items:
-        # Get TMDB ID if available
         tmdb_id = item.get_external_id("tmdb")
         imdb_id = item.get_external_id("imdb")
         
@@ -288,7 +271,7 @@ async def restart_server(current_user: User = Depends(get_current_admin_user)):
     log_service.info("Server restart requested by admin")
 
     def perform_restart():
-        time.sleep(1)  # Wait for response to send
+        time.sleep(1)
         os.execv(sys.executable, ["python"] + sys.argv)
 
     import threading
@@ -296,6 +279,5 @@ async def restart_server(current_user: User = Depends(get_current_admin_user)):
     threading.Thread(target=perform_restart).start()
 
     return {"message": "Server is restarting... This may take a few seconds."}
-
 
 

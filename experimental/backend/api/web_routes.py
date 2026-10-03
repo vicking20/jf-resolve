@@ -65,7 +65,6 @@ async def login_page(request: Request):
 @router.get("/setup", response_class=HTMLResponse)
 async def setup_page(request: Request):
     """First-time setup wizard"""
-    # Check if setup flag file exists
     if settings.SETUP_FLAG_FILE.exists():
         return RedirectResponse(url="/login")
 
@@ -129,10 +128,8 @@ async def unified_media_detail_page(
     api_key = await settings_mgmt.get("tmdb_api_key")
     tmdb = TMDBService(api_key) if api_key else None
 
-    # We create resolver with TMDB service (or dummy if not configured)
     resolver = MediaResolver(tmdb) if tmdb else MediaResolver(TMDBService(""))
 
-    # Determine media type if not provided (from URL path)
     if not media_type:
         path = request.url.path
         if "/movie" in path:
@@ -140,11 +137,9 @@ async def unified_media_detail_page(
         elif "/series" in path or "/tv" in path:
             media_type = "tv"
         else:
-            media_type = "movie"  # Default
+            media_type = "movie"
 
     try:
-        # 1. Resolve media item (Hybrid: DB + TMDB)
-        # item_id can be UUID, tmdb:123, or just 123 (backwards compat)
         identifier = item_id
         if item_id.isdigit():
             identifier = f"tmdb:{item_id}"
@@ -162,18 +157,14 @@ async def unified_media_detail_page(
         try:
             await ensure_item_allowed(db, user, item)
         except HTTPException:
-            # Same page as a missing title, so restricted titles aren't revealed
             return templates.TemplateResponse(
                 request=request, name="404.html", context={"request": request}, status_code=403
             )
 
-        # item is already a dictionary from MediaResolver
         item_data = item
 
-        # Extract key metadata fields to top level for consistency
         metadata = item_data.get("metadata", {})
         if metadata:
-            # Ensure key fields are available at top level
             if not item_data.get("overview") and metadata.get("overview"):
                 item_data["overview"] = metadata.get("overview")
             if not item_data.get("vote_average") and metadata.get("vote_average"):
@@ -183,7 +174,6 @@ async def unified_media_detail_page(
             if not item_data.get("runtime") and metadata.get("runtime"):
                 item_data["runtime"] = metadata.get("runtime")
 
-        # 2. Get sources via SourceOrchestrator
         sources_dict = await source_orchestrator.get_sources(
             db,
             media_uuid=item.get("uuid") or "",
@@ -194,7 +184,6 @@ async def unified_media_detail_page(
             year=item.get("year") or 0,
         )
 
-        # Inject additional metadata for UI if it's a TV show
         if item.get("media_type") == "tv" and tmdb:
             tmdb_id = item.get("tmdb_id")
             if tmdb_id:
@@ -225,12 +214,10 @@ async def unified_media_detail_page(
                         continue
                 item_data["seasons"] = seasons
 
-        # Image URLs - Unified format (use UUID if available, otherwise TMDB proxy)
         if item.get("uuid"):
             item_data["poster_url"] = f"/api/media/images/poster/{item.get('uuid')}"
             item_data["backdrop_url"] = f"/api/media/images/backdrop/{item.get('uuid')}"
         else:
-            # For transient TMDB items, use TMDB proxy directly
             poster_path = item.get("image_paths", {}).get("poster")
             backdrop_path = item.get("image_paths", {}).get("backdrop")
             if poster_path:
@@ -283,9 +270,6 @@ async def plugin_configure_page(
     )
 
 
-
-
-
 @router.post("/api/addons/install")
 async def install_plugin(
     plugin_id: str = Query(...),
@@ -302,7 +286,6 @@ async def install_plugin(
     if plugin_id in plugin_manager.plugins:
         raise HTTPException(status_code=400, detail="Plugin already installed")
 
-    # Fetch manifest from repository
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(repository_url)
@@ -311,13 +294,11 @@ async def install_plugin(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch repository: {e}")
 
-    # Find the plugin
     plugins = manifest.get("plugins", [])
     plugin_data = next((p for p in plugins if p["id"] == plugin_id), None)
     if not plugin_data:
         raise HTTPException(status_code=404, detail="Plugin not found in repository")
 
-    # Create plugin directory
     plugin_dir = Path(settings.BASE_DIR) / "plugins" / plugin_id
     plugin_dir.mkdir(parents=True, exist_ok=True)
 
@@ -325,7 +306,6 @@ async def install_plugin(
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Download files
         files = plugin_data.get("files", {})
         downloaded_files = {}
 
@@ -338,7 +318,6 @@ async def install_plugin(
                     response.raise_for_status()
                     content = response.content
 
-                # Save to temp
                 temp_file = temp_dir / f"{plugin_id}_{file_type}"
                 with open(temp_file, "wb") as f:
                     f.write(content)
@@ -349,7 +328,6 @@ async def install_plugin(
                     status_code=400, detail=f"Failed to download {file_type}"
                 )
 
-        # Move files to plugin directory
         manifest_dest = plugin_dir / "manifest.json"
         plugin_dest = plugin_dir / "plugin.py"
         config_dest = plugin_dir / "config.html"
@@ -361,7 +339,6 @@ async def install_plugin(
         if "config" in downloaded_files:
             downloaded_files["config"].rename(config_dest)
 
-        # Handle dependencies
         depends_on = plugin_data.get("depends_on", [])
         if depends_on:
             import subprocess
@@ -375,21 +352,17 @@ async def install_plugin(
                 )
             except subprocess.CalledProcessError as e:
                 logging.error(f"Failed to install dependencies: {e}")
-                # Continue anyway, plugin might work without
 
-        # Load the plugin
         await plugin_manager._load_plugin(plugin_dir, manifest_dest)
 
         return {"message": "Plugin installed successfully", "plugin_id": plugin_id}
 
     except Exception as e:
-        # Cleanup on failure
 
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)
         raise HTTPException(status_code=500, detail=f"Installation failed: {e}")
     finally:
-        # Cleanup temp files
         for temp_file in downloaded_files.values():
             if temp_file.exists():
                 temp_file.unlink()
@@ -412,7 +385,6 @@ async def check_plugin_update(
     installed_plugin = plugin_manager.plugins[plugin_id]
     installed_version = installed_plugin.manifest.get("version", "0.0.0")
 
-    # Fetch remote manifest
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(repository_url)
@@ -421,7 +393,6 @@ async def check_plugin_update(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch repository: {e}")
 
-    # Find the plugin
     plugins = manifest.get("plugins", [])
     plugin_data = next((p for p in plugins if p["id"] == plugin_id), None)
     if not plugin_data:
@@ -460,7 +431,6 @@ async def update_plugin(
     if plugin_id not in plugin_manager.plugins:
         raise HTTPException(status_code=404, detail="Plugin not installed")
 
-    # Fetch remote manifest
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(repository_url)
@@ -469,13 +439,11 @@ async def update_plugin(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch repository: {e}")
 
-    # Find the plugin
     plugins = manifest.get("plugins", [])
     plugin_data = next((p for p in plugins if p["id"] == plugin_id), None)
     if not plugin_data:
         raise HTTPException(status_code=404, detail="Plugin not found in repository")
 
-    # Check if update needed
     installed_version = plugin_manager.plugins[plugin_id].manifest.get(
         "version", "0.0.0"
     )
@@ -487,9 +455,8 @@ async def update_plugin(
         if Version(remote_version) <= Version(installed_version):
             return {"message": "Plugin is already up to date"}
     except Exception:
-        pass  # Continue with update
+        pass
 
-    # Backup config if breaking change
     plugin_dir = Path(settings.BASE_DIR) / "plugins" / plugin_id
     config_file = plugin_dir / "config.json"
     config_backup = None
@@ -498,14 +465,12 @@ async def update_plugin(
         installed_ver = Version(installed_version)
         remote_ver = Version(remote_version)
         if remote_ver.major > installed_ver.major and config_file.exists():
-            # Breaking change - backup config
 
             config_backup = plugin_dir / "config.json.backup"
             shutil.copy2(config_file, config_backup)
     except Exception:
         pass
 
-    # Download and update files (similar to install)
     temp_dir = Path(settings.BASE_DIR) / "data" / "temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -539,11 +504,9 @@ async def update_plugin(
                     status_code=400, detail=f"Failed to download {file_type}"
                 )
 
-        # Update files
         for file_type, (temp_file, dest_file) in downloaded_files.items():
             temp_file.rename(dest_file)
 
-        # Handle dependencies (reinstall if changed)
         depends_on = plugin_data.get("depends_on", [])
         if depends_on:
             import subprocess
@@ -565,12 +528,10 @@ async def update_plugin(
             except subprocess.CalledProcessError as e:
                 logging.error(f"Failed to update dependencies: {e}")
 
-        # Reload the plugin
         await plugin_manager.unload_plugin(plugin_id)
         manifest_path = plugin_dir / "manifest.json"
         await plugin_manager._load_plugin(plugin_dir, manifest_path)
 
-        # Clean up backup if successful
         if config_backup and config_backup.exists():
             config_backup.unlink()
 
@@ -582,13 +543,11 @@ async def update_plugin(
         }
 
     except Exception as e:
-        # Restore backup on failure
         if config_backup and config_backup.exists():
             shutil.copy2(config_backup, config_file)
             config_backup.unlink()
         raise HTTPException(status_code=500, detail=f"Update failed: {e}")
     finally:
-        # Cleanup temp files
         for temp_file, _ in downloaded_files.values():
             if temp_file.exists():
                 temp_file.unlink()

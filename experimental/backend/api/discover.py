@@ -43,5 +43,5 @@ async def get_discover_content(
     return {
         "items": results,
         "page": page,
-        "has_more": len(results) > 0 # Simple check, ideally would check total pages from TMDB but this suffices for infinite scroll
+        "has_more": len(results) > 0
     }

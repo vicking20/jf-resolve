@@ -16,7 +16,7 @@ block content %}
 
     <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-            <!-- Header with Refresh -->
+
             <div class="flex justify-between items-center mb-4">
                 <h2 class="card-title"
                     x-text="logType === 'scan_jobs' ? 'Scan Jobs History' : `${logType.charAt(0).toUpperCase() + logType.slice(1)} Logs`">
@@ -31,7 +31,6 @@ block content %}
                 </div>
             </div>
 
-            <!-- Standard Logs View -->
             <div x-show="logType !== 'scan_jobs'">
                 <div class="mockup-code min-h-96 overflow-y-auto">
                     <template x-if="logs.length > 0">
@@ -45,7 +44,6 @@ block content %}
                 </div>
             </div>
 
-            <!-- Scan Jobs View -->
             <div x-show="logType === 'scan_jobs'" class="overflow-x-auto min-h-96">
                 <table class="table table-zebra w-full">
                     <thead>

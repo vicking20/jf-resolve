@@ -16,16 +16,13 @@ class MediaItem(BaseModel):
     original_title: Optional[str] = None
     year: Optional[int] = None
     
-    # Unified nesting
     image_paths: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
     
-    # Flags
     in_library: bool = False
     is_persisted: bool = False
     is_local: bool = False
 
-    # Optional flat fields (for UI fallback/backwards compatibility)
     poster_path: Optional[str] = None
     backdrop_path: Optional[str] = None
     overview: Optional[str] = None

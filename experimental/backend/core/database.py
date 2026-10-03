@@ -18,7 +18,6 @@ from .logging import get_logger
 
 logger = get_logger(__name__)
 
-# SQLAlchemy Base
 Base = declarative_base()
 
 
@@ -30,36 +29,29 @@ def get_engine_kwargs(database_url: str) -> dict:
     }
 
     if "sqlite" in database_url:
-        # SQLite-specific settings
         kwargs["connect_args"] = {"check_same_thread": False}
-        # Use StaticPool for SQLite to avoid connection issues
         kwargs["poolclass"] = StaticPool
     elif "postgresql" in database_url:
-        # PostgreSQL-specific settings
         kwargs["pool_size"] = 10
         kwargs["max_overflow"] = 20
-        kwargs["pool_pre_ping"] = True  # Verify connections before using
-        kwargs["pool_recycle"] = 3600  # Recycle connections after 1 hour
+        kwargs["pool_pre_ping"] = True
+        kwargs["pool_recycle"] = 3600
     else:
-        # Generic settings for other databases
         kwargs["poolclass"] = NullPool
 
     return kwargs
 
 
-# Create async engine
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     **get_engine_kwargs(settings.DATABASE_URL),
 )
 
-# Create sync engine (for migrations and scripts)
 sync_engine = create_engine(
     settings.SYNC_DATABASE_URL,
     **get_engine_kwargs(settings.SYNC_DATABASE_URL),
 )
 
-# Session factories
 AsyncSessionLocal = async_sessionmaker(
     async_engine,
     class_=AsyncSession,
@@ -75,21 +67,19 @@ SessionLocal = sessionmaker(
 )
 
 
-# SQLite optimization: Enable WAL mode and foreign keys
 @event.listens_for(sync_engine, "connect")
 def set_sqlite_pragma_sync(dbapi_conn, connection_record):
     """Set SQLite pragmas for better performance"""
     if "sqlite" in settings.SYNC_DATABASE_URL:
         cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
-        cursor.execute("PRAGMA synchronous=NORMAL")  # Faster writes
-        cursor.execute("PRAGMA foreign_keys=ON")  # Enforce foreign keys
-        cursor.execute("PRAGMA temp_store=MEMORY")  # Temp tables in memory
-        cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.execute("PRAGMA cache_size=-64000")
         cursor.close()
 
 
-# Async dependency for FastAPI
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency to get async database session
@@ -110,7 +100,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-# Context manager for manual session handling
 @asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
@@ -131,7 +120,6 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
-# Sync session for scripts
 def get_sync_db() -> Session:
     """
     Get synchronous database session (for scripts)
@@ -159,22 +147,18 @@ async def init_db() -> None:
     """
     logger.info(f"Initializing database: {settings.DATABASE_TYPE.value}")
 
-    # Import all models to ensure they're registered with Base.metadata
     from ..models import Setting, User, MediaItem, MediaExternalId, MediaSourceModel  # noqa: F401
 
-    # Import new models if they exist
     try:
         from ..models.addon import Addon, AddonPermission  # noqa: F401
         from ..models.playback import PlaybackSession, SkipSegment  # noqa: F401
         from ..models.user_profile import UserProfile  # noqa: F401
     except ImportError:
-        # New models not yet created
         pass
 
     async with async_engine.begin() as conn:
 
         def create_tables(connection):
-            # checkfirst=True makes create_all skip existing tables
             Base.metadata.create_all(connection, checkfirst=True)
 
         await conn.run_sync(create_tables)
@@ -182,6 +166,5 @@ async def init_db() -> None:
     logger.info("Database initialized successfully")
 
 
-# Export for backward compatibility
 engine = async_engine
 get_db_dependency = get_db

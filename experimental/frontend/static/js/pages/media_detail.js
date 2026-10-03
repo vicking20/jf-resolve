@@ -1,4 +1,4 @@
-// Simple genre mapping for common genres
+
 const GENRE_MAP = {
   28: "Action",
   12: "Adventure",
@@ -40,8 +40,8 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     inWatchlist: false,
     watchlistId: null,
     requestsEnabled: false,
-    requestStatus: null, // pending | approved | denied | failed for this title
-    episodeProgress: {}, // Map<S_E, progress_percentage>
+    requestStatus: null,
+    episodeProgress: {},
     selectedSeason: null,
     selectedEpisode: null,
     sourcesLoading: false,
@@ -51,7 +51,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
 
     currentPlayerSource: null,
     progressInterval: null,
-    allSources: [], // All available sources with detailed info
+    allSources: [],
     selectedSourceIndex: 0,
     audioTracks: [],
     selectedAudioTrack: null,
@@ -68,16 +68,16 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     seekBusy: false,
     currentStreamId: null,
 
-    videoPlayer: null, // VideoPlayer instance (player.js)
+    videoPlayer: null,
 
     async init() {
-      // Add cleanup for page unload/navigation
+
       this._unloadHandler = () => this.handleUnload();
       window.addEventListener('pagehide', this._unloadHandler);
       window.addEventListener('beforeunload', this._unloadHandler);
 
       try {
-        // If media was provided by server (virtual TMDB item)
+
         if (this.media && this.isVirtual) {
           this.media = {
             ...this.media,
@@ -88,18 +88,16 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
           };
         }
 
-        // Ensure genres are available for all media types
         if (this.media && !this.media.genres && this.media.genre_ids) {
           this.media.genres = getGenreNames(this.media.genre_ids);
         }
 
-        // Ensure media has safe defaults for video/videoseries
         if (this.media) {
           this.media = this.sanitizeMediaObject(this.media);
         }
 
         const mediaIdFromUrl = this.getMediaIdFromUrl();
-        // Try DB ID first, then TMDB ID, then UUID, then URL segment
+
         const mediaId =
           this.media?.id ||
           this.media?.tmdb_id ||
@@ -109,7 +107,6 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
         if (mediaId) {
           await this.loadMedia(mediaId);
 
-          // Run these in parallel but catch errors individually
           await Promise.allSettled([
             this.checkWatchlist().catch((e) =>
               console.log("Watchlist check failed:", e),
@@ -124,7 +121,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
 
           const params = new URLSearchParams(window.location.search);
           const requestedEpisode = /^\d+$/.test(params.get("season") || "") && /^\d+$/.test(params.get("episode") || "");
-          // Set initial selection for shows
+
           if (!requestedEpisode && (
             this.media?.media_type === "tv" ||
             this.media?.media_type === "video_series"
@@ -132,7 +129,6 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
             await this.setInitialSelection();
           }
 
-          // Handle autoPlay from URL
           if ((this.media?.media_type === 'tv' || this.media?.media_type === 'video_series') &&
               /^\d+$/.test(params.get('season') || '') && /^\d+$/.test(params.get('episode') || '')) {
             this.selectedSeason = Number(params.get('season'));
@@ -141,9 +137,9 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
           }
           if (params.get("autoPlay") === "true") {
             const time = parseFloat(params.get("time")) || 0;
-            // Build sources list first
+
             this.buildAllSourcesList();
-            // Play best available source with resume time
+
             if (this.allSources.length > 0) {
               const requestedSource = Number(params.get("source_id"));
               const sourceIndex = params.has("source_id") ? this.allSources.findIndex(source => source.type === "local" && source.data.id === requestedSource) : 0;
@@ -156,7 +152,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
       } catch (error) {
         console.error("Failed to initialize media detail page:", error);
         this.loading = false;
-        // Show error notification if available
+
         if (Alpine.store("notifications")) {
           Alpine.store("notifications").error("Failed to load media details");
         }
@@ -164,7 +160,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     },
 
     sanitizeMediaObject(media) {
-      // Ensure all expected properties exist with safe defaults
+
       return {
         ...media,
         title: media.title || media.name || "Untitled",
@@ -318,15 +314,14 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     },
 
     async initPlayer(url, startTime = 0) {
-      // Detach the old owner before destroying it: its close event must not
-      // close or null out the replacement player.
+
       const previous = this.videoPlayer;
       this.videoPlayer = null;
       if (previous) previous.destroy();
       const previousStreamId = this.currentStreamId || previous?.streamId;
       this.currentStreamId = null;
       this.videoPlayer = new VideoPlayer('main-player', { overlayId: 'paused-overlay' });
-      // Alpine wraps assigned objects; compare against the stored reference.
+
       const player = this.videoPlayer;
       let failed = false;
       const sourceIndex = this.selectedSourceIndex;
@@ -449,8 +444,6 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
         ? displayName.substring(0, 57) + "..."
         : displayName;
     },
-
-
 
     buildAllSourcesList() {
       const allSources = [];
@@ -896,7 +889,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     },
 
     _onPlayerClosed() {
-      // Called from VideoPlayer destroy hook
+
       this.videoPlayer = null;
       Alpine.store('ui').playerOpen = false;
       this.stopProgressTracking();
@@ -917,7 +910,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
       this._playRequestId = (this._playRequestId || 0) + 1;
       if (this.videoPlayer) {
         this.currentStreamId = this.currentStreamId || this.videoPlayer.streamId;
-        this.videoPlayer.destroy(); // triggers _onPlayerClosed via onClose hook
+        this.videoPlayer.destroy();
       } else {
         this._onPlayerClosed();
       }
@@ -959,7 +952,6 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
         audio_track: this.selectedAudioTrack,
       });
 
-      // Use sendBeacon for fire-and-forget (non-blocking)
       if (navigator.sendBeacon) {
         navigator.sendBeacon("/api/playback/update", new Blob([data], { type: 'application/json' }));
       } else {

@@ -17,14 +17,11 @@ class SessionData(BaseModel):
     """Pydantic model for session data"""
 
     user_id: int
-    # Fingerprint of the password hash: changing a password invalidates old sessions
     pwd: str
 
 
-# Create a serializer with the app's secret key
 serializer = URLSafeTimedSerializer(settings.SECRET_KEY, salt="session")
 
-# Session cookie settings
 SESSION_COOKIE_NAME = "jfresolve_session"
 SESSION_DURATION_SECONDS = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
@@ -44,7 +41,6 @@ async def create_session_cookie(response: Response, user, request: Request):
         value=session_token,
         max_age=SESSION_DURATION_SECONDS,
         httponly=True,
-        # Secure whenever the browser reached us over HTTPS (directly or via the tunnel)
         secure=is_https(request) or settings.is_production(),
         samesite="lax",
     )

@@ -24,8 +24,6 @@ function loginPage() {
           throw new Error(data.detail || "Login failed");
         }
 
-        // On successful login, the backend sets a session cookie.
-        // Redirect to the main page.
         window.location.href = "/";
       } catch (e) {
         this.error = e.message;
@@ -36,7 +34,6 @@ function loginPage() {
   };
 }
 
-// Check if setup is needed
 fetch("/api/auth/status")
   .then((r) => r.json())
   .then((data) => {

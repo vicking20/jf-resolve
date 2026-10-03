@@ -112,23 +112,18 @@ class TMDBClient:
             imdb_id = external_ids.get("imdb_id")
 
             if not imdb_id:
-                # raise IMDBIdNotFoundError(tmdb_id, media_type) 
-                # Don't raise, just return None as in original service
                 return None
 
             return imdb_id
         except Exception as e:
             logger.error(f"Failed to get IMDB ID for {media_type}:{tmdb_id}: {e}")
-            # raise
             return None
 
     def parse_media_item(self, item: Dict, media_type: str = None) -> Dict:
         """Parse TMDB item into standardized format"""
-        # Determine media type
         if media_type is None:
             media_type = item.get("media_type", "movie")
 
-        # Handle both movie and TV naming
         if media_type == "movie":
             title = item.get("title", "")
             release_date = item.get("release_date", "")
@@ -138,7 +133,6 @@ class TMDBClient:
             release_date = item.get("first_air_date", "")
             original_title = item.get("original_name", "")
 
-        # Extract year from release date
         year = None
         if release_date:
             try:
@@ -146,20 +140,17 @@ class TMDBClient:
             except (ValueError, IndexError):
                 pass
 
-        # Extract IMDb ID from external_ids if present (from details endpoint)
         imdb_id = None
         external_ids = item.get("external_ids", {})
         if external_ids:
             imdb_id = external_ids.get("imdb_id")
 
-        # Extract content rating
         content_rating = None
         if media_type == "movie":
             content_rating = get_us_movie_certification(item)
         elif media_type == "tv":
             content_rating = get_us_tv_rating(item)
 
-        # Extract director and cast from credits
         director = None
         cast = []
         credits_data = item.get("credits", {})
@@ -172,8 +163,6 @@ class TMDBClient:
             cast_list = credits_data.get("cast", [])
             cast = [actor.get("name") for actor in cast_list[:5] if actor.get("name")]
 
-        # The unified object structure
-        # Filter metadata to keep only essential fields to reduce DB bloat
         essential_metadata = {
             "id": item.get("id") or item.get("tmdb_id"),
             "overview": item.get("overview") or item.get("overview_raw", ""),
@@ -213,7 +202,6 @@ class TMDBClient:
             "overview": item.get("overview") or item.get("overview_raw", ""),
             "vote_average": item.get("vote_average", 0),
             "popularity": item.get("popularity", 0),
-            # Sync with MediaItem.to_dict() top-level fields
             "content_rating": content_rating,
             "director": director,
             "cast": cast,

@@ -18,13 +18,11 @@ endblock %} {% block content %}
         </div>
     </div>
 
-    <!-- Search -->
     <div class="mb-6">
         <input type="text" x-model="searchQuery" @input="filterPlugins()" placeholder="Search plugins..."
             class="input input-bordered w-full max-w-md" />
     </div>
 
-    <!-- Repositories -->
     <div x-show="repositories.length > 0">
         <template x-for="repo in repositories" :key="repo.url">
             <div class="mb-8">
@@ -106,13 +104,11 @@ endblock %} {% block content %}
         </template>
     </div>
 
-    <!-- Loading State -->
     <div x-show="loading" class="text-center py-12">
         <span class="loading loading-spinner loading-lg"></span>
         <p class="mt-4">Loading marketplace...</p>
     </div>
 
-    <!-- No Plugins -->
     <div x-show="!loading && repositories.length === 0" class="alert alert-info">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -121,7 +117,6 @@ endblock %} {% block content %}
         <span>No repositories configured. Add a repository to browse plugins.</span>
     </div>
 
-<!-- Add Repository Modal -->
 <div x-cloak class="modal" :class="showAddRepositoryModal ? 'modal-open' : ''" @click.self="showAddRepositoryModal = false">
     <div class="modal-box">
         <h3 class="font-bold text-lg">Add Plugin Repository</h3>
@@ -154,7 +149,6 @@ endblock %} {% block content %}
         </div>
     </div>
 </div>
-
 
 </div>
 

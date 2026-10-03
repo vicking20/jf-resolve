@@ -49,10 +49,6 @@ class LibraryService:
             raise ValueError(f"Library item {media_uuid} not found")
 
         title = item.title
-        # We don't necessarily delete the MediaItem record if it has playback sessions 
-        # but we mark it as NOT persisted.
-        # Actually, for a clean "Remove from Library" we might want to delete it 
-        # unless it's in the watchlist.
         
         item.is_persisted = False
         await self.db.commit()
@@ -66,7 +62,6 @@ class LibraryService:
         if not item:
             raise ValueError(f"Media item {media_uuid} not found")
 
-        # Get TMDB ID
         result = await self.db.execute(
             select(MediaExternalId.external_id).where(
                 MediaExternalId.media_uuid == media_uuid,
@@ -81,7 +76,6 @@ class LibraryService:
         if not details:
             return {"message": "Could not fetch details from TMDB"}
 
-        # Update fields
         item.title = details.get("title") or details.get("name")
         item.year = int(details.get("release_date", details.get("first_air_date", ""))[:4] or 0)
         item.image_paths = {

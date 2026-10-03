@@ -1,22 +1,18 @@
-// Common utility functions
 
 const getPosterUrl = (path, mediaTypeOrItem = "movie", tmdbId = null) => {
   let type = mediaTypeOrItem;
   let id = tmdbId;
 
-  // Handle being passed (path, item) where item has media_type and tmdb_id/uuid
   if (typeof mediaTypeOrItem === "object" && mediaTypeOrItem !== null) {
     type = mediaTypeOrItem.media_type || "movie";
 
-    // For user content (video/video_series), use uuid
-    // For TMDB content (movie/tv), use tmdb_id
     if (type === "video" || type === "video_series") {
       id =
         mediaTypeOrItem.video_uuid ||
         mediaTypeOrItem.uuid ||
         mediaTypeOrItem.id;
     } else {
-      // Priority: cache_key > tmdb_id > id
+
       id =
         mediaTypeOrItem.cache_key ||
         mediaTypeOrItem.tmdb_id ||
@@ -24,7 +20,6 @@ const getPosterUrl = (path, mediaTypeOrItem = "movie", tmdbId = null) => {
     }
   }
 
-  // Return default if no path, UNLESS it's user content (which might have local file without DB path)
   if ((!path || path === "null" || path === "") && type !== "video" && type !== "video_series")
     return "/static/images/default_poster.png";
   if (
@@ -34,7 +29,6 @@ const getPosterUrl = (path, mediaTypeOrItem = "movie", tmdbId = null) => {
   )
     return path;
 
-  // If we have id and type, use local proxy
   if (type && id) {
     return `/api/media/images/${type}/${id}/poster?path=${encodeURIComponent(path)}`;
   }
@@ -43,10 +37,9 @@ const getPosterUrl = (path, mediaTypeOrItem = "movie", tmdbId = null) => {
 };
 
 const getBackdropUrl = (path, mediaType = "movie", tmdbId = null) => {
-  if (!path) return ""; // Backdrops are often optional, keep empty for CSS overlay logic
+  if (!path) return "";
   if (path.startsWith("http") || path.startsWith("/api/")) return path;
 
-  // If we have id and type, use local proxy
   if (mediaType && tmdbId) {
     return `/api/media/images/${mediaType}/${tmdbId}/backdrop?path=${encodeURIComponent(path)}`;
   }
@@ -69,11 +62,10 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 function showAlert(title, message) {
-  // Generic alert - pages can override
+
   alert(`${title}\n\n${message}`);
 }
 
-// Make globally available
 window.getPosterUrl = getPosterUrl;
 window.getBackdropUrl = getBackdropUrl;
 window.fetchWithAuth = fetchWithAuth;

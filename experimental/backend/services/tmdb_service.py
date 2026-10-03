@@ -17,7 +17,7 @@ class TMDBService:
         self.base_url = "https://api.themoviedb.org/3"
         self.image_base_url = "https://image.tmdb.org/t/p/w500"
         self.client = httpx.AsyncClient(timeout=30.0)
-        self.cache = {}  # Simple in-memory cache for API responses
+        self.cache = {}
 
     async def _request(self, endpoint: str, params: Dict = None) -> Optional[Dict]:
         """Make request to TMDB API with retry logic"""
@@ -34,15 +34,13 @@ class TMDBService:
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
-                # Don't retry on 4xx errors (client errors)
                 if 400 <= e.response.status_code < 500:
                     log_service.error(
                         f"TMDB API client error ({e.response.status_code}): {endpoint}"
                     )
                     return None
-                # Retry on 5xx errors (server errors)
                 if attempt < max_retries - 1:
-                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                    wait_time = 2**attempt
                     log_service.warning(
                         f"TMDB API error, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries}): {e}"
                     )
@@ -53,7 +51,6 @@ class TMDBService:
                     )
                     return None
             except httpx.RequestError as e:
-                # Network errors - retry
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt
                     log_service.warning(
@@ -204,11 +201,9 @@ class TMDBService:
 
     def parse_media_item(self, item: Dict, media_type: str = None) -> Dict:
         """Parse TMDB item into standardized format"""
-        # Determine media type
         if media_type is None:
             media_type = item.get("media_type", "movie")
 
-        # Handle both movie and TV naming
         if media_type == "movie":
             title = item.get("title", "")
             release_date = item.get("release_date", "")
@@ -218,7 +213,6 @@ class TMDBService:
             release_date = item.get("first_air_date", "")
             original_title = item.get("original_name", "")
 
-        # Extract year from release date
         year = None
         if release_date:
             try:
@@ -226,20 +220,17 @@ class TMDBService:
             except (ValueError, IndexError):
                 pass
 
-        # Extract IMDb ID from external_ids if present (from details endpoint)
         imdb_id = None
         external_ids = item.get("external_ids", {})
         if external_ids:
             imdb_id = external_ids.get("imdb_id")
 
-        # Extract content rating
         content_rating = None
         if media_type == "movie":
             content_rating = get_us_movie_certification(item)
         elif media_type == "tv":
             content_rating = get_us_tv_rating(item)
 
-        # Extract director and cast from credits
         director = None
         cast = []
         credits_data = item.get("credits", {})
@@ -252,8 +243,6 @@ class TMDBService:
             cast_list = credits_data.get("cast", [])
             cast = [actor.get("name") for actor in cast_list[:5] if actor.get("name")]
 
-        # The unified object structure
-        # Filter metadata to keep only essential fields to reduce DB bloat
         essential_metadata = {
             "id": item.get("id") or item.get("tmdb_id"),
             "release_date": release_date,
@@ -294,7 +283,6 @@ class TMDBService:
             "overview": item.get("overview") or item.get("overview_raw", ""),
             "vote_average": item.get("vote_average", 0),
             "popularity": item.get("popularity", 0),
-            # Sync with MediaItem.to_dict() top-level fields
             "content_rating": content_rating,
             "director": director,
             "cast": cast,

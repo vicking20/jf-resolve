@@ -47,7 +47,7 @@ function logsPage() {
 
         if (response.ok) {
           alert("Scan job cancelled successfully");
-          this.loadLogs(); // Refresh the list
+          this.loadLogs();
         } else {
           alert("Failed to cancel scan job");
         }
@@ -74,7 +74,6 @@ function logsPage() {
   };
 }
 
-// Register with Alpine
 document.addEventListener("alpine:init", () => {
   Alpine.data("logsPage", logsPage);
 });

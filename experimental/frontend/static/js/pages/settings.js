@@ -1,13 +1,10 @@
-/**
- * Settings Page
- */
 
 function settingsPage() {
   return {
     tab: "general",
     saving: false,
     settings: {
-      // General
+
       operation_profile: "standalone",
       web_player_enabled: true,
       strm_generation_enabled: false,
@@ -30,26 +27,21 @@ function settingsPage() {
       disable_discover_backdrop: false,
       screensaver_enabled: true,
 
-      // Library Scanning
       library_scanner_mode: "lazy",
 
-      // Advanced
       enable_failover: true,
       failover_grace_period: 45,
       failover_reset_window: 120,
 
-      // Activity Tracking
       log_user_logins: true,
       log_playback_events: true,
       activity_retention_days: 90,
 
-      // Server
       host: "0.0.0.0",
       port: 8765,
       session_timeout: 1440,
     },
 
-    // Library Paths
     libraryPaths: [],
     showAddPathModal: false,
     newPath: {
@@ -59,17 +51,13 @@ function settingsPage() {
     },
     editingPath: null,
 
-    // Scanner status
     scannerStatus: null,
 
-    // Resource monitoring
     resources: null,
     checkingResources: false,
 
-    // Plugins
     plugins: [],
 
-    // Users
     users: [],
     showCreateUserModal: false,
     showEditUserModal: false,
@@ -81,7 +69,6 @@ function settingsPage() {
     },
     editingUser: null,
 
-    // Toast notifications
     toast: {
       show: false,
       message: "",
@@ -130,7 +117,7 @@ function settingsPage() {
         if (!response.ok) throw new Error("Failed to load settings");
 
         const data = await response.json();
-        // Merge loaded settings with defaults
+
         this.settings = { ...this.settings, ...data.settings };
       } catch (error) {
         console.error("Error loading settings:", error);
@@ -199,7 +186,6 @@ function settingsPage() {
         return;
       }
 
-      // If we are editing, call update instead
       if (this.editingPath) {
         await this.updateLibraryPath();
         return;
@@ -264,7 +250,6 @@ function settingsPage() {
     async deleteLibraryPath(id) {
       console.log("Delete library path clicked:", id);
 
-      // Use notifications modal
       const notificationStore = Alpine.store("notifications");
       if (notificationStore && notificationStore.confirm) {
         console.log("Using notifications confirm");
@@ -278,7 +263,7 @@ function settingsPage() {
         );
       } else {
         console.log("Notifications store not available, using native confirm");
-        // Fallback to native confirm
+
         if (
           confirm(
             "Are you sure you want to remove this library path? This will remove all media entries from this path.",
@@ -346,7 +331,7 @@ function settingsPage() {
         if (!response.ok) throw new Error("Failed to restart server");
 
         this.showToast("Server restarting...", "info");
-        // Reload page after 5 seconds
+
         setTimeout(() => window.location.reload(), 5000);
       } catch (error) {
         console.error("Error restarting server:", error);
@@ -354,7 +339,6 @@ function settingsPage() {
       }
     },
 
-    // Plugin Management
     async loadPlugins() {
       try {
         const response = await fetch("/api/addons/");
@@ -368,7 +352,7 @@ function settingsPage() {
     },
 
     configurePlugin(plugin) {
-      // If plugin has custom UI, navigate to it or open modal
+
       if (plugin.has_ui) {
         window.location.href = `/addons/${plugin.id}/configure`;
       } else {
@@ -402,7 +386,6 @@ function settingsPage() {
       }
     },
 
-    // User Management
     async loadUsers() {
       try {
         const response = await fetch("/api/users/");
@@ -547,7 +530,6 @@ function settingsPage() {
       };
     },
 
-    // Library Scanning
     scanning: false,
     showRescanModal: false,
     rescanPath: null,
@@ -556,8 +538,7 @@ function settingsPage() {
       if (this.scanning) return;
       this.scanning = true;
       await this.performScan({ force_rescan: force });
-      // Reset scanning state after a delay or let user refresh manually
-      // Since we don't poll anymore, we just show a toast
+
       setTimeout(() => {
         this.scanning = false;
       }, 2000);
@@ -645,7 +626,7 @@ function settingsPage() {
 
         if (response.ok) {
           this.showToast("Scanner mode updated", "success");
-          // Reload scanner status to show updated watchers
+
           await this.loadScannerStatus();
         } else {
           const err = await response.json();

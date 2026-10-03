@@ -81,7 +81,6 @@ async def update_user(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
-    # Check if username is being changed and if it already exists
     if update_data.username and update_data.username != user.username:
         auth_service = AuthService(db)
         existing = await auth_service.get_user_by_username(update_data.username)
@@ -105,12 +104,10 @@ async def update_user(
         auth_service = AuthService(db)
         user.hashed_password = auth_service.get_password_hash(update_data.password)
 
-    # Handle profile updates
     if (
         update_data.enable_parental_controls is not None
         or update_data.max_content_rating is not None
     ):
-        # Get or create user profile
         profile_result = await db.execute(
             select(UserProfile).where(UserProfile.user_id == user_id)
         )
@@ -124,7 +121,6 @@ async def update_user(
             profile.enable_parental_controls = update_data.enable_parental_controls
 
         if update_data.max_content_rating is not None:
-            # Validate content rating value
             try:
                 profile.max_content_rating = ContentRating(
                     update_data.max_content_rating

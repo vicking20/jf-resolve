@@ -6,11 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{% block title %}JF-Resolve{% endblock %}</title>
 
-    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
     <link rel="icon" type="image/png" href="/static/jfresolve.png" />
 
-    <!-- HLS.js - Local first with CDN fallback -->
     <script src="/static/vendor/js/hls.js" onerror="
                 this.onerror = null;
                 const script = document.createElement('script');
@@ -18,7 +16,6 @@
                 document.head.appendChild(script);
             "></script>
 
-    <!-- ArtPlayer - Local first with CDN fallback -->
     <script src="/static/vendor/js/artplayer.js" onerror="
                 this.onerror = null;
                 const script = document.createElement('script');
@@ -26,15 +23,12 @@
                 document.head.appendChild(script);
             "></script>
 
-
-    <!-- DaisyUI CSS - Local first with CDN fallback -->
     <link href="/static/vendor/css/daisyui.min.css" rel="stylesheet" type="text/css" onerror="
                 this.onerror = null;
                 this.href =
                     'https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css';
             " />
 
-    <!-- Tailwind CSS - Local first with CDN fallback -->
     <script src="/static/vendor/js/tailwind.js" onerror="
                 this.onerror = null;
                 const script = document.createElement('script');
@@ -42,8 +36,6 @@
                 document.head.appendChild(script);
             "></script>
 
-
-    <!-- Alpine.js - Local first with CDN fallback -->
     <script defer src="/static/vendor/js/alpine.min.js" onerror="
                 this.onerror = null;
                 const script = document.createElement('script');
@@ -53,13 +45,11 @@
                 document.head.appendChild(script);
             "></script>
 
-    <!-- Shared JavaScript -->
     <script src="/static/js/shared/auth.js"></script>
     <script src="/static/js/shared/utils.js"></script>
 
-    <!-- Show page once DOM is ready to prevent FOUC -->
     <script>
-        // Mark html as ready once DOM content is loaded
+
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", function () {
                 document.documentElement.classList.add("ready");
@@ -68,7 +58,6 @@
             document.documentElement.classList.add("ready");
         }
 
-        // Global image error handler - replace broken images with default poster
         document.addEventListener(
             "error",
             function (e) {
@@ -88,7 +77,7 @@
 
     <script>
         document.addEventListener("alpine:init", () => {
-            // Auth Data
+
             Alpine.data("auth", () => ({
                 isLoggedIn: false,
                 user: null,
@@ -101,14 +90,13 @@
                     });
                 },
                 logout() {
-                    window.logout(); // Use shared auth.js logout
+                    window.logout();
                 },
             }));
 
-            // Notifications store
             Alpine.store("notifications", {
                 isOpen: false,
-                type: "info", // info, success, error, confirm
+                type: "info",
                 title: "",
                 message: "",
                 confirmCallback: null,
@@ -166,7 +154,6 @@
                 },
             });
 
-            // UI Store for global states
             Alpine.store("ui", {
                 isFullscreen: false,
                 playerOpen: false,
@@ -192,16 +179,14 @@
             });
         });
 
-        // Listen for background updates
         window.addEventListener("update-background", (e) => {
             const url = e.detail;
             if (!url) return;
 
-            // Create a temporary image to preload
             const img = new Image();
             img.src = url;
             img.onload = () => {
-                // Find or create backdrop element
+
                 let backdrop = document.getElementById("global-backdrop");
                 if (!backdrop) {
                     backdrop = document.createElement("div");
@@ -371,7 +356,6 @@
             }
         }
 
-        /* Prevent FOUC - Hide content until CSS loads */
         html {
             visibility: hidden;
             opacity: 0;
@@ -382,12 +366,10 @@
             opacity: 1;
         }
 
-        /* Hide Alpine.js elements before initialization */
         [x-cloak] {
             display: none !important;
         }
 
-        /* Media Card */
         .media-card {
             position: relative;
             width: 10rem;
@@ -426,17 +408,16 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
-        /* Hide scrollbars globally but keep functionality */
         * {
             -ms-overflow-style: none;
-            /* IE and Edge */
+
             scrollbar-width: none;
-            /* Firefox */
+
         }
 
         *::-webkit-scrollbar {
             display: none;
-            /* Chrome, Safari and Opera */
+
         }
 
         .media-card img {
@@ -445,7 +426,6 @@
             object-fit: cover;
         }
 
-        /* Carousel Container */
         .carousel-container {
             overflow-x: auto;
             overflow-y: hidden;
@@ -461,11 +441,11 @@
 </head>
 
 <body class="min-h-screen text-base-content overflow-x-hidden overflow-y-auto p-0 m-0">
-    <!-- Navbar -->
+
     {% block navbar %}
     <div class="jfr-topbar py-2 pointer-events-none">
         <div class="navbar w-[94%] max-w-[1700px] mx-auto pointer-events-auto min-h-11 px-0 md:px-2 gap-2">
-            <!-- Navbar Start -->
+
             <div class="navbar-start">
                 <a href="/" class="jfr-nav-surface min-h-11 px-2.5 md:px-3 text-base items-center gap-2" aria-label="JF-Resolve home">
                     <img src="/static/jfresolve.png" alt="JF-Resolve" class="h-6 w-6" />
@@ -473,7 +453,6 @@
                 </a>
             </div>
 
-            <!-- Navbar Center -->
             <div class="navbar-center hidden lg:flex">
                 <nav class="jfr-nav-surface gap-1 p-1" aria-label="Main navigation">
                     <a href="/" class="jfr-nav-link" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Home</a>
@@ -482,9 +461,8 @@
                 </nav>
             </div>
 
-            <!-- Navbar End -->
             <div class="navbar-end flex items-center gap-2" x-data="auth" x-init="init()">
-                <!-- Search/Home Toggle -->
+
                 <a :href="$store.ui.isSearch ? '/' : '/search'" class="jfr-nav-surface h-10 w-10 justify-center" aria-label="Search">
                     <template x-if="!$store.ui.isSearch">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
@@ -502,7 +480,6 @@
                     </template>
                 </a>
 
-                <!-- Profile Dropdown -->
                 <div class="dropdown dropdown-end jfr-nav-surface h-10 w-10 justify-center" x-show="isLoggedIn" x-cloak x-data="{ open: false }"
                     @click.away="open = false; $el.querySelector('label').blur()">
                     <label tabindex="0" class="btn btn-ghost btn-circle avatar placeholder jfr-profile-trigger"
@@ -608,7 +585,6 @@
 
     {% block extra_scripts %}{% endblock %}
 
-    <!-- Notifications Modal -->
     <div x-data x-show="$store.notifications.isOpen" x-cloak
         class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50"
         @click.self="$store.notifications.handleCancel()">
@@ -641,10 +617,10 @@
             </div>
         </div>
     </div>
-    <!-- Screensaver -->
+
     <div x-data="screensaver" x-show="params.enabled && active && !$store.ui.playerOpen" x-transition.opacity.duration.1000ms
         class="fixed inset-0 z-[9999] bg-black pointer-events-none" style="display: none">
-        <!-- Slideshow -->
+
         <template x-for="(image, index) in images" :key="index">
             <div x-show="currentIndex === index" x-transition:enter="transition ease-out duration-1000"
                 x-transition:enter-start="opacity-0 scale-105" x-transition:enter-end="opacity-100 scale-100"
@@ -658,7 +634,6 @@
             </div>
         </template>
 
-        <!-- Clock -->
         <div class="absolute top-8 right-8 text-white/80 font-mono text-xl" x-text="time"></div>
     </div>
 
@@ -668,8 +643,8 @@
                 active: false,
                 params: {
                     enabled: true,
-                    timeout: 5 * 60 * 1000, // 5 minutes
-                    interval: 10000, // 10 seconds per slide
+                    timeout: 5 * 60 * 1000,
+                    interval: 10000,
                 },
                 images: [],
                 currentIndex: 0,
@@ -680,14 +655,14 @@
 
                 async init() {
                     this.$watch('$store.ui.playerOpen', () => this.resetTimer());
-                    // Check settings
+
                     try {
                         const res = await fetch(
                             "/api/settings/screensaver_enabled",
                         );
                         if (res.ok) {
                             const data = await res.json();
-                            // If value is null, default to true
+
                             this.params.enabled = data.value !== false;
                         }
                     } catch (e) {
@@ -713,7 +688,6 @@
                         );
                     });
 
-                    // Update clock
                     this.updateTime();
                     setInterval(() => this.updateTime(), 1000);
                 },
@@ -769,7 +743,7 @@
                         const data = await Promise.all(
                             responses.map((r) => r.json()),
                         );
-                        // Robustly handle both {results: [...]} and direct array [...] formats
+
                         const allItems = [
                             ...(Array.isArray(data[0])
                                 ? data[0]
@@ -786,14 +760,13 @@
                             return;
                         }
 
-                        // Shuffle
                         const shuffled = allItems
                             .sort(() => 0.5 - Math.random())
                             .slice(0, 20);
 
                         this.images = shuffled
                             .map((item) => {
-                                // Handle both nested and flat structures for compatibility
+
                                 const meta = item.metadata || item;
                                 const images = item.image_paths || {};
 
@@ -818,7 +791,7 @@
                                     ).substring(0, 4),
                                 };
                             })
-                            .filter((i) => i.url && i.url.length > 5); // Ensure valid URL length
+                            .filter((i) => i.url && i.url.length > 5);
 
                         console.log(
                             `Screensaver loaded ${this.images.length} images`,

@@ -19,7 +19,6 @@ class PluginManifest(BaseModel):
 class BasePlugin(ABC):
     """Base class for all plugins"""
 
-    # Default settings defined in code (override in subclass)
     default_config: Dict[str, Any] = {}
 
     def __init__(self, manifest: PluginManifest, path: str):
@@ -28,7 +27,6 @@ class BasePlugin(ABC):
         self.enabled = False
         self.config: Dict[str, Any] = {}
 
-        # Setup plugin-specific logger
         from .manager import get_plugin_logger
         self.logger = get_plugin_logger(manifest.id)
 
@@ -51,7 +49,6 @@ class BasePlugin(ABC):
         """
         config_path = self.path / "config.json"
 
-        # Start with defaults
         current_config = self.default_config.copy()
 
         if config_path.exists():
@@ -65,7 +62,6 @@ class BasePlugin(ABC):
                 )
 
         self.config = current_config
-        # Ensure a config.json exists if it didn't
         if not config_path.exists() and self.default_config:
             self.save_config()
 
@@ -83,16 +79,13 @@ class BasePlugin(ABC):
             )
 
 
-# --- Capability Interfaces ---
-
-
 class CatalogueItem(BaseModel):
     id: str
     title: str
     poster_url: Optional[str] = None
     backdrop_url: Optional[str] = None
     overview: Optional[str] = None
-    media_type: str  # 'movie', 'tv'
+    media_type: str
     year: Optional[int] = None
     rating: Optional[float] = None
 
@@ -104,7 +97,7 @@ class CatalogueDefinition(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
-    media_type: Optional[str] = None  # 'movie', 'tv' or None for mixed
+    media_type: Optional[str] = None
     provider_id: Optional[str] = None
 
 
@@ -172,8 +165,6 @@ class UserContentSourceProvider(ABC):
     - Generic addon: Process all items regardless of id_source
     """
 
-    # Override this to specify which id_sources this addon handles
-    # None means handle all sources, ["kitsu"] means only kitsu items
     supported_sources: Optional[List[str]] = None
 
     @abstractmethod
@@ -228,9 +219,9 @@ class UserContentSourceProvider(ABC):
 
 
 class Injection(BaseModel):
-    target_id: str  # ID or location hook in the template
-    content: str  # HTML content
-    scripts: Optional[str] = None  # JS to execute
+    target_id: str
+    content: str
+    scripts: Optional[str] = None
 
 
 class UIExtension(ABC):

@@ -114,7 +114,7 @@ class StrmService:
         else:
             for season in details.get("seasons", []):
                 season_num = season.get("season_number")
-                if not season_num:  # Skip specials (season 0)
+                if not season_num:
                     continue
                 season_details = await self.tmdb.get_season_details(tmdb_id, season_num) or {}
                 season_folder = folder / f"Season {season_num:02d}"

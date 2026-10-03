@@ -22,7 +22,6 @@ def get_plugin_logger(plugin_id: str) -> logging.Logger:
     """Get a logger for a specific plugin that writes to logs/plugin.log"""
     logger = logging.getLogger(f"plugin.{plugin_id}")
     if not logger.handlers:
-        # Save logs ONLY in data/logs/plugin.log
         data_log_file = settings.BASE_DIR / "data" / "logs" / "plugin.log"
         data_log_file.parent.mkdir(parents=True, exist_ok=True)
         data_handler = logging.FileHandler(data_log_file)
@@ -32,7 +31,6 @@ def get_plugin_logger(plugin_id: str) -> logging.Logger:
 
         logger.addHandler(data_handler)
         logger.setLevel(logging.INFO)
-        # Prevent propagation to root logger
         logger.propagate = False
 
     return logger
@@ -55,13 +53,11 @@ class SafePluginWrapper:
         """Intercept all attribute access and wrap callable methods"""
         attr = getattr(self._plugin, name)
 
-        # If it's a method, wrap it with error handling
         if callable(attr):
 
             async def safe_wrapper(*args, **kwargs):
                 try:
                     result = attr(*args, **kwargs)
-                    # Handle both sync and async methods
                     if hasattr(result, "__await__"):
                         return await result
                     return result
@@ -70,7 +66,6 @@ class SafePluginWrapper:
                         f"Plugin '{self._plugin_name}' error in {name}(): {e}",
                         exc_info=True,
                     )
-                    # Return safe defaults based on expected return type
                     if name in ["get_catalogues", "get_items", "get_streams"]:
                         return []
                     elif name in ["get_ui_extensions"]:
@@ -102,18 +97,17 @@ class PluginManager:
 
     def __init__(self, plugins_dir: Path = None):
         if plugins_dir is None:
-            # Look in plugins/ in project root
             plugins_dir = Path(__file__).parent.parent.parent / "plugins"
 
         self.plugins_dir = plugins_dir
-        self.plugins: Dict[str, BasePlugin] = {}  # Keyed by Stable ID
+        self.plugins: Dict[str, BasePlugin] = {}
         self.catalogue_providers: List[CatalogueProvider] = []
         self.source_providers: List[
             SourceProvider
-        ] = []  # TMDB content (requires IMDB ID)
+        ] = []
         self.user_content_providers: List[
             UserContentSourceProvider
-        ] = []  # User content
+        ] = []
         self.ui_extensions: List[UIExtension] = []
 
     async def load_all(self):
@@ -140,11 +134,9 @@ class PluginManager:
 
     async def _load_plugin(self, plugin_dir: Path, manifest_path: Path):
         """Load a single plugin"""
-        # Parse manifest
         with open(manifest_path) as f:
             manifest = json.load(f)
 
-        # 1. Manifest ID is the only truth
         plugin_id = manifest.get("id")
         if not plugin_id:
             logger.error(
@@ -152,7 +144,6 @@ class PluginManager:
             )
             return
 
-        # 2. Duplicate ID Detection (Internal reference check)
         if plugin_id in self.plugins:
             logger.error(
                 f"Duplicate plugin ID detected: {plugin_id}. Skipping folder {plugin_dir.name}"
@@ -163,7 +154,6 @@ class PluginManager:
 
         entry_point = manifest.get("entry_point", "plugin.py")
 
-        # Load Python module
         module_path = plugin_dir / entry_point
         if not module_path.exists():
             raise FileNotFoundError(f"Entry point not found: {entry_point}")
@@ -172,8 +162,6 @@ class PluginManager:
             f"plugins.{plugin_dir.name}", module_path
         )
         module = importlib.util.module_from_spec(spec)
-        # Older marketplace plugins import backend.*. Resolve those imports to
-        # this running backend so interfaces and database models retain identity.
         backend_package = __package__.rsplit(".", 1)[0]
 
         def plugin_import(name, globals=None, locals=None, fromlist=(), level=0):
@@ -188,7 +176,6 @@ class PluginManager:
         }
         spec.loader.exec_module(module)
 
-        # Instantiate plugin
         if not hasattr(module, "Plugin"):
             raise AttributeError(f"No 'Plugin' class found in {entry_point}")
 
@@ -197,13 +184,10 @@ class PluginManager:
         manifest_obj = PluginManifest(**manifest)
         plugin_instance = module.Plugin(manifest=manifest_obj, path=str(plugin_dir))
 
-        # Wrap plugin with error handler
         safe_plugin = SafePluginWrapper(plugin_instance, manifest)
 
-        # Register plugin
         self.plugins[plugin_id] = safe_plugin
 
-        # Register by capability
         if isinstance(plugin_instance, CatalogueProvider):
             self.catalogue_providers.append(safe_plugin)
         if isinstance(plugin_instance, SourceProvider):
@@ -213,10 +197,8 @@ class PluginManager:
         if isinstance(plugin_instance, UIExtension):
             self.ui_extensions.append(safe_plugin)
 
-        # Load config and merge defaults
         plugin_instance.load_config()
 
-        # Call on_load
         await safe_plugin.on_load()
 
         logger.info(
@@ -228,7 +210,7 @@ class PluginManager:
         """Get items from a specific catalogue (errors handled automatically)"""
         for provider in self.catalogue_providers:
             items = await provider.get_items(catalogue_id, page)
-            if items:  # If this provider handled it
+            if items:
                 return items
         return []
 
@@ -240,11 +222,9 @@ class PluginManager:
         for provider in self.source_providers:
             streams = await provider.get_streams(imdb_id, media_type, season, episode)
             if streams:
-                # Use display name instead of technical ID
                 plugin_name = provider.manifest.get("name") or provider.manifest.get(
                     "id"
                 )
-                # Convert to dicts if they are pydantic models
                 all_streams[plugin_name] = [
                     s if isinstance(s, dict) else s.model_dump() for s in streams
                 ]
@@ -261,10 +241,9 @@ class PluginManager:
         """Get streams for user video from all user content providers"""
         all_streams = {}
         for provider in self.user_content_providers:
-            # Check if provider supports this id_source
             supported = getattr(provider._plugin, "supported_sources", None)
             if supported is not None and id_source not in supported:
-                continue  # Skip this provider
+                continue
 
             streams = await provider.get_streams_for_video(
                 video_uuid, title, id_source, external_id, metadata
@@ -291,10 +270,9 @@ class PluginManager:
         """Get streams for user video series episode from all user content providers"""
         all_streams = {}
         for provider in self.user_content_providers:
-            # Check if provider supports this id_source
             supported = getattr(provider._plugin, "supported_sources", None)
             if supported is not None and id_source not in supported:
-                continue  # Skip this provider
+                continue
 
             streams = await provider.get_streams_for_video_series(
                 series_uuid, title, season, episode, id_source, external_id, metadata
@@ -313,7 +291,6 @@ class PluginManager:
         plugin = self.plugins.get(plugin_id)
         if plugin:
             await plugin.on_unload()
-            # Remove from capability lists
             self.catalogue_providers = [
                 p for p in self.catalogue_providers if p.manifest.id != plugin_id
             ]
@@ -341,18 +318,11 @@ class PluginManager:
 
         if plugin_dir.exists():
             if delete_data:
-                # Full wipe
                 import shutil
 
                 shutil.rmtree(plugin_dir)
                 logger.info(f"Deleted plugin and data: {plugin_dir}")
             else:
-                # Only delete code/manifest (Optional: based on list of critical files)
-                # For now, if "keep data", we might just disable it or let the user
-                # manually manage the folder. The standard "delete" in most apps
-                # either wipes everything or keeps everything.
-                # If we want to keep data, we should probably only delete plugin.py
-                # and manifest.json.
                 (plugin_dir / "plugin.py").unlink(missing_ok=True)
                 (plugin_dir / "manifest.json").unlink(missing_ok=True)
                 logger.info(f"Deleted plugin code but kept data in: {plugin_dir}")
@@ -360,7 +330,6 @@ class PluginManager:
     def get_plugin_ui(self, plugin_id: str) -> Optional[str]:
         """Fetch the config.html content for a plugin"""
         plugin = self.plugins.get(plugin_id)
-        # Check has_ui (SafePluginWrapper will return the property value)
         if not plugin:
             logger.error(f"UI requested for unknown plugin: {plugin_id}")
             return None
@@ -392,7 +361,6 @@ class PluginManager:
 
         plugin.config.update(config)
 
-        # SafePluginWrapper makes this async if it was a method
         save_coro = plugin.save_config()
         if hasattr(save_coro, "__await__"):
             await save_coro
@@ -400,5 +368,4 @@ class PluginManager:
         return plugin.config
 
 
-# Global instance
 plugin_manager = PluginManager()

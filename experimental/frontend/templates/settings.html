@@ -4,7 +4,6 @@
 <div x-data="settingsPage()" class="pb-32">
     <h1 class="text-3xl font-bold mb-6 mt-4">Settings</h1>
 
-    <!-- Tabs -->
     <div
         class="jfr-nav-surface jfr-settings-tabs mb-6 overflow-x-auto flex-nowrap w-full md:w-fit p-1 gap-1"
     >
@@ -62,7 +61,6 @@
         {% endif %}
     </div>
 
-    <!-- General Tab -->
     <div x-show="tab === 'general'" x-cloak>
         <div class="card jfr-panel">
             <div class="card-body">
@@ -92,7 +90,6 @@
                     </label>
                 </div>
 
-                <!-- Save Button -->
                 <div class="card-actions justify-end mt-6">
                     <button @click="saveSettings()" class="btn btn-primary">
                         <span x-show="!saving">Save Settings</span>
@@ -106,7 +103,6 @@
         </div>
     </div>
 
-    <!-- Connections Tab -->
     <div x-show="tab === 'connections'" x-cloak class="space-y-5">
         <div class="card jfr-panel">
             <div class="card-body">
@@ -187,7 +183,6 @@
         <div class="card jfr-panel">
             <div class="card-body">
                 <h2 class="card-title">Metadata</h2>
-                <!-- Metadata Settings -->
 
                 <div class="form-control">
                     <label class="label"
@@ -204,7 +199,6 @@
                     />
                 </div>
 
-                <!-- TMDB API Key -->
                 <div class="form-control">
                     <label class="label"
                         ><span class="label-text">TMDB API Key</span></label
@@ -235,13 +229,11 @@
         </div>
     </div>
 
-    <!-- Library Tab -->
     <div x-show="tab === 'library'" x-cloak>
         <div class="card jfr-panel mb-6">
             <div class="card-body">
                 <h2 class="card-title">Library Paths</h2>
 
-                <!-- Library Paths List -->
                 <div class="space-y-4">
                     <template x-for="path in libraryPaths" :key="path.id">
                         <div class="alert flex">
@@ -304,7 +296,6 @@
                     </div>
                 </div>
 
-                <!-- Add Path Button -->
                 <div class="card-actions justify-end mt-4">
                     <button
                         @click="showAddPathModal = true"
@@ -316,12 +307,10 @@
             </div>
         </div>
 
-        <!-- Scanning Settings -->
         <div class="card jfr-panel">
             <div class="card-body">
                 <h2 class="card-title">Scanning</h2>
 
-                <!-- Scan mode -->
                 <div class="form-control">
                     <label class="label">
                         <span class="label-text font-semibold"
@@ -352,7 +341,6 @@
                     </label>
                 </div>
 
-                <!-- Scanner Status -->
                 <div
                     class="alert alert-info text-sm mt-4"
                     x-show="scannerStatus"
@@ -415,13 +403,11 @@
         </div>
     </div>
 
-    <!-- Advanced Tab -->
     <div x-show="tab === 'advanced'" x-cloak>
         <div class="card jfr-panel">
             <div class="card-body">
                 <h2 class="card-title">Playback</h2>
 
-                <!-- Transcoding Settings -->
                 <div class="divider mt-8">Streaming</div>
 
                 <div class="form-control">
@@ -686,7 +672,6 @@
                     </label>
                 </div>
 
-                <!-- Quality Settings -->
                 <div class="divider mt-8">Content</div>
 
                 <div class="form-control">
@@ -742,7 +727,6 @@
         </div>
     </div>
 
-    <!-- Security Tab -->
     <div x-show="tab === 'security'" x-cloak>
         <div class="card jfr-panel">
             <div class="card-body">
@@ -782,7 +766,6 @@
         </div>
     </div>
 
-    <!-- Plugins Tab -->
     {% if user.is_superuser %}
     <div x-show="tab === 'plugins'" x-cloak>
         <div class="card jfr-panel">
@@ -909,7 +892,6 @@
         </div>
     </div>
 
-    <!-- Users Tab -->
     <div x-show="tab === 'users'" x-cloak>
         <div class="card jfr-panel">
             <div class="card-body">
@@ -1039,9 +1021,8 @@
     </div>
     {% endif %}
 
-    <!-- System Tab -->
     {% if user.is_superuser %}
-    <!-- Requests Tab -->
+
     <div x-show="tab === 'requests'" x-cloak>
         <div class="card jfr-panel">
             <div class="card-body">
@@ -1091,7 +1072,7 @@
         <div class="card jfr-panel mb-6">
             <div class="card-body">
                 <h2 class="card-title">Activity and server</h2>
-                <!-- Activity -->
+
                 <div class="divider mt-8">Activity</div>
 
                 <div class="form-control">
@@ -1131,7 +1112,6 @@
                     />
                 </div>
 
-                <!-- Server -->
                 <div class="divider mt-8">Server</div>
 
                 <div class="form-control">
@@ -1166,40 +1146,37 @@
         <div class="card jfr-panel mb-6">
             <div class="card-body">
                 <h2 class="card-title text-info">Resource usage</h2>
-                
-                <!-- Check Button -->
+
                 <div class="form-control mb-4">
                     <button @click="checkResources()" class="btn btn-info" :disabled="checkingResources">
                         <span x-show="!checkingResources">Check Resources</span>
                         <span x-show="checkingResources" class="loading loading-spinner loading-xs"></span>
                     </button>
                 </div>
-                
-                <!-- Results Display -->
+
                 <div x-show="resources" class="space-y-3">
-                    <!-- JF-Resolve Process Metrics -->
+
                     <div class="p-3 bg-success/10 rounded-lg">
                         <h3 class="text-sm font-bold mb-2 text-success">JF-Resolve Process (PID: <span x-text="resources?.process?.pid"></span>)</h3>
                         <div class="space-y-1 font-mono text-sm">
                             <div>CPU: <span class="text-success font-bold" x-text="resources?.process?.cpu_percent + '%'"></span></div>
-                            <div>Memory: <span class="text-success font-bold" x-text="resources?.process?.memory_mb + 'MB'"></span> 
+                            <div>Memory: <span class="text-success font-bold" x-text="resources?.process?.memory_mb + 'MB'"></span>
                                  (<span class="text-success" x-text="resources?.process?.memory_percent + '%'"></span>)
                                  of <span class="text-success" x-text="resources?.system?.memory?.total_gb + 'GB'"></span> total
                             </div>
                             <div>Threads: <span class="text-success font-bold" x-text="resources?.process?.num_threads"></span></div>
                         </div>
                     </div>
-                    
-                    <!-- System Metrics -->
+
                     <div class="p-3 bg-base-200 rounded-lg">
                         <h3 class="text-sm font-bold mb-2">System Total</h3>
                         <div class="space-y-1 font-mono text-sm">
                             <div>CPU: <span class="text-primary font-bold" x-text="resources?.system?.cpu_percent + '%'"></span></div>
-                            <div>Memory: <span class="text-primary font-bold" x-text="resources?.system?.memory?.used_gb + 'GB'"></span> / 
+                            <div>Memory: <span class="text-primary font-bold" x-text="resources?.system?.memory?.used_gb + 'GB'"></span> /
                                  <span class="text-primary font-bold" x-text="resources?.system?.memory?.total_gb + 'GB'"></span> total
                             </div>
-                            <div>Disk: <span class="text-primary font-bold" x-text="resources?.system?.disk?.used_gb + 'GB'"></span> / 
-                                 <span class="text-primary" x-text="resources?.system?.disk?.total_gb + 'GB'"></span> 
+                            <div>Disk: <span class="text-primary font-bold" x-text="resources?.system?.disk?.used_gb + 'GB'"></span> /
+                                 <span class="text-primary" x-text="resources?.system?.disk?.total_gb + 'GB'"></span>
                                  (<span class="text-primary" x-text="resources?.system?.disk?.percent + '%'"></span>)
                             </div>
                         </div>
@@ -1254,7 +1231,6 @@
     </div>
     {% endif %}
 
-    <!-- Add Library Path Modal -->
     <div
         x-show="showAddPathModal"
         x-cloak
@@ -1327,7 +1303,6 @@
         </div>
     </div>
 
-    <!-- Rescan Options Modal -->
     <div
         x-show="showRescanModal"
         x-cloak
@@ -1367,7 +1342,6 @@
         </div>
     </div>
 
-    <!-- Create User Modal -->
     <div
         x-show="showCreateUserModal"
         x-cloak
@@ -1429,7 +1403,6 @@
         </div>
     </div>
 
-    <!-- Edit User Modal -->
     <div
         x-show="showEditUserModal"
         x-cloak
@@ -1473,7 +1446,6 @@
                     </label>
                 </div>
 
-                <!-- Update Password -->
                 <div class="divider mt-6">Change Password</div>
                 <div class="form-control">
                     <label class="label"
@@ -1522,7 +1494,6 @@
         </template>
     </div>
 
-    <!-- Toast Notifications -->
     <div
         x-show="toast.show"
         x-transition

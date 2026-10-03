@@ -31,7 +31,6 @@ class MediaResolver:
         Resolve a media item by identifier (UUID or provider:id).
         Returns a dictionary representing the media item (Transient or Persisted).
         """
-        # 1. Handle UUID directly
         if self._is_uuid(identifier):
             result = await db.execute(
                 select(MediaItem)
@@ -54,10 +53,8 @@ class MediaResolver:
                 return data
             return None
 
-        # 2. Handle Provider ID (e.g. "tmdb:123" or "imdb:tt123")
         provider, ext_id = self._parse_identifier(identifier)
         if provider and ext_id:
-            # Check DB mapping
             result = await db.execute(
                 select(MediaExternalId).where(
                     MediaExternalId.provider == provider,
@@ -86,18 +83,13 @@ class MediaResolver:
                         data["in_watchlist"] = res.scalar_one_or_none() is not None
                     return data
 
-            # 3. Not in DB -> JIT fetch from Provider
             item_dict = None
             if provider == "tmdb":
                 item_dict = await self._fetch_transient_tmdb(ext_id, media_type)
             elif provider == "imdb":
-                # For IMDb, we might need to find TMDB ID first or search
                 pass
 
             if item_dict and user_id:
-                # Watchlist check for transient items (by TMDB ID)
-                # However, watchlist items MUST be persisted with a UUID in our current model
-                # So we check if ANY item with this TMDB ID is in this user's watchlist
                 if provider == "tmdb":
                     from ..models.watchlist import WatchlistItem
 
@@ -128,7 +120,6 @@ class MediaResolver:
         """
         Convert a transient media item (dict) into a persisted database record.
         """
-        # 1. Check if already exists via External IDs or UUID
         tmdb_id = transient_item.get("tmdb_id")
         item = None
         
@@ -146,7 +137,6 @@ class MediaResolver:
                 )
                 item = result.scalar_one_or_none()
                 
-        # Fallback: Check if we have a UUID in the item already (e.g. local content)
         if not item and transient_item.get("uuid"):
             result = await db.execute(
                 select(MediaItem).where(MediaItem.uuid == transient_item["uuid"])
@@ -154,26 +144,22 @@ class MediaResolver:
             item = result.scalar_one_or_none()
 
         if item:
-            # Update persistence if requested (0 -> 1 transition)
             needs_metadata_trigger = False
             if is_persisted and not item.is_persisted:
                 item.is_persisted = True
                 needs_metadata_trigger = True
 
-            # Update metadata_blob with fresh data (merging)
             new_metadata = transient_item.get("metadata") or {}
             if new_metadata:
                 existing_meta = item.metadata_blob or {}
                 item.metadata_blob = {**existing_meta, **new_metadata}
 
-            # Update image paths (merging)
             new_images = transient_item.get("image_paths") or {}
             if new_images:
                 existing_images = item.image_paths or {}
                 item.image_paths = {**existing_images, **new_images}
 
             if needs_metadata_trigger and tmdb_id:
-                # Re-use metadata_service to download images
                 await metadata_service.save_metadata(
                     media_type=item.media_type.value,
                     item_id=str(tmdb_id),
@@ -183,7 +169,6 @@ class MediaResolver:
 
             return item
 
-        # 2. Create MediaItem
         new_item = MediaItem(
             uuid=transient_item.get("uuid") or str(uuid.uuid4()),
             media_type=transient_item["media_type"]
@@ -198,9 +183,7 @@ class MediaResolver:
         )
         db.add(new_item)
 
-        # 3. Add external IDs
         if tmdb_id:
-            # Check if this provider/id pair already exists
             stmt = select(MediaExternalId).where(
                 MediaExternalId.provider == "tmdb",
                 MediaExternalId.external_id == str(tmdb_id)
@@ -215,7 +198,6 @@ class MediaResolver:
 
         imdb_id = transient_item.get("imdb_id")
         if imdb_id:
-            # Check if this provider/id pair already exists
             stmt = select(MediaExternalId).where(
                 MediaExternalId.provider == "imdb",
                 MediaExternalId.external_id == imdb_id
@@ -230,11 +212,7 @@ class MediaResolver:
 
         await db.flush()
 
-        # 4. Trigger Poster Download (Reusable)
         if is_persisted and tmdb_id:
-            # We use the transient_item itself as the source for metadata_service
-            # This ensures images are downloaded immediately
-            # We can use metadata_blob from the item which has the data
             metadata_to_save = transient_item.get("metadata") or transient_item
             await metadata_service.save_metadata(
                 media_type=new_item.media_type.value,
@@ -271,11 +249,9 @@ class MediaResolver:
             if not data:
                 return None
 
-            # Standardized unified object
             item_dict = self.tmdb.parse_media_item(data, media_type)
-            item_dict["uuid"] = None  # Explicitly transient
+            item_dict["uuid"] = None
             
-            # Additional transient-only fields (for UI)
             item_dict["overview"] = item_dict["metadata"].get("overview")
             item_dict["vote_average"] = item_dict["metadata"].get("vote_average")
             item_dict["runtime"] = item_dict["metadata"].get("runtime")

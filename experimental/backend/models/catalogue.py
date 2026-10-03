@@ -16,8 +16,7 @@ class Catalogue(Base):
     slug = Column(String(255), nullable=False, unique=True, index=True)
     description = Column(String(500), nullable=True)
     
-    # Ordering of items in the catalogue
-    order_config = Column(JSON, nullable=True)  # { "type": "manual", "ids": [...] } or { "type": "auto", "sort": "created_at" }
+    order_config = Column(JSON, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(

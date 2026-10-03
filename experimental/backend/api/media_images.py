@@ -33,7 +33,6 @@ def _validate_request(media_type: str, item_id, path: Optional[str] = None) -> N
     """Reject values that would be used to build cache paths or TMDB URLs unsafely."""
     if media_type not in MEDIA_TYPES or not SAFE_ID.fullmatch(str(item_id)):
         raise HTTPException(status_code=400, detail="Invalid media identifier")
-    # User-content handlers ignore ``path``; only TMDB paths build download URLs.
     if media_type not in ("video", "video_series") and path is not None and not TMDB_IMAGE_PATH.fullmatch(path):
         raise HTTPException(status_code=400, detail="Invalid image path")
 
@@ -42,14 +41,11 @@ async def _get_local_file_path(
     media_type: str, item_id: str | int, image_type: str
 ) -> Optional[Path]:
     """Get path to local cached image if it exists"""
-    # Initialize metadata service (paths are standard)
     metadata = MetadataService()
     media_dir = metadata.get_media_dir(media_type, item_id)
 
-    # Common extensions
     extensions = [".jpg", ".jpeg", ".png", ".webp"]
 
-    # Check for direct file (e.g. poster.jpg)
     for ext in extensions:
         file_path = media_dir / f"{image_type}{ext}"
         if file_path.exists():
@@ -84,7 +80,6 @@ async def _handle_image_unified(
     """Unified handler for posters/backdrops by UUID"""
     from fastapi.responses import RedirectResponse
 
-    # 1. Resolve MediaItem
     result = await db.execute(
         select(MediaItem)
         .where(MediaItem.uuid == media_uuid)
@@ -92,26 +87,21 @@ async def _handle_image_unified(
     )
     item = result.scalar_one_or_none()
     if not item:
-        # Fallback to default if not found
         default_path = (Path(app_settings.STATIC_DIR) / "images" / "default_poster.png").resolve()
         return FileResponse(str(default_path))
 
-    # 2. Get the image path from the image_paths JSON blob
     path_val = None
     if item.image_paths:
         path_val = item.image_paths.get(image_type)
 
     if path_val:
-        # If it's a full URL, redirect
         if path_val.startswith("http"):
             return RedirectResponse(path_val)
 
-        # If it's a local file path
         p = Path(path_val)
         if p.exists():
             return FileResponse(p)
 
-    # 3. Check for metadata directory cache
     tmdb_id_for_cache = item.get_external_id("tmdb")
     if tmdb_id_for_cache:
         local_path = await _get_local_file_path(
@@ -120,17 +110,13 @@ async def _handle_image_unified(
         if local_path and local_path.exists():
             return FileResponse(local_path)
 
-    # 4. Handle TMDB content proxy/cache
     tmdb_id = item.get_external_id("tmdb")
     if tmdb_id and path_val:
-        # We need the path_val from metadata_blob if not in top-level image_paths
-        # But usually TMDB path starts with /
         if path_val.startswith("/"):
             return await _proxy_tmdb_image(
                 db, item.media_type, tmdb_id, image_type, path_val
             )
 
-    # 5. Last resort: Default image
     default_path = (Path(app_settings.STATIC_DIR) / "images" / "default_poster.png").resolve()
     return FileResponse(str(default_path))
 
@@ -184,7 +170,6 @@ async def _handle_user_content_image(
     """Handle images for user content (Legacy support)"""
     from fastapi.responses import RedirectResponse
 
-    # Try to find MediaItem first since most things should be migrated
     result = await db.execute(select(MediaItem).where(MediaItem.uuid == item_id))
     item = result.scalar_one_or_none()
 
@@ -196,8 +181,6 @@ async def _handle_user_content_image(
     if not path_val and item.image_paths:
         path_val = item.image_paths.get(image_type)
 
-    # Only paths stored on the media item may be served from disk; the query
-    # parameter is client-controlled and is ignored here.
     if path_val:
         if path_val.startswith("http"):
             return RedirectResponse(path_val)
@@ -253,14 +236,11 @@ async def get_media_image(
         raise HTTPException(status_code=400, detail="Invalid image type")
     from ..models.media_external_id import MediaExternalId
 
-    # 1. Try to return cached image first
     cached_path = await _get_local_file_path(media_type, tmdb_id, image_type)
     if cached_path and cached_path.exists():
         return FileResponse(cached_path)
 
-    # 2. If not cached and path provided, download JIT
     if path:
-        # Collect protected IDs to ensure we don't evict library items during JIT
         protected_ids = set()
         result = await db.execute(
             select(MediaExternalId.external_id).where(

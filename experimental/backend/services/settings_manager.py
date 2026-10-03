@@ -32,7 +32,6 @@ class SettingsManager:
 
     async def get(self, key: str, default: Any = None) -> Any:
         """Get setting value with environment variable override"""
-        # Check environment variable override
         env_key = key.upper()
         env_value = os.getenv(env_key)
         if env_value is not None:
@@ -41,11 +40,9 @@ class SettingsManager:
             except (json.JSONDecodeError, TypeError):
                 return env_value
 
-        # Check cache
         if key in self._cache:
             return self._cache[key]
 
-        # Query database
         result = await self.db.execute(select(Setting).where(Setting.key == key))
         setting = result.scalar_one_or_none()
 
@@ -62,7 +59,6 @@ class SettingsManager:
 
     async def set(self, key: str, value: Any):
         """Set setting value"""
-        # Serialize value
         if isinstance(value, (dict, list)):
             json_value = json.dumps(value)
         elif isinstance(value, bool):
@@ -70,7 +66,6 @@ class SettingsManager:
         else:
             json_value = str(value)
 
-        # Upsert in database
         result = await self.db.execute(select(Setting).where(Setting.key == key))
         setting = result.scalar_one_or_none()
 
@@ -82,7 +77,6 @@ class SettingsManager:
 
         await self.db.commit()
 
-        # Update cache
         self._cache[key] = value
 
     async def get_all(self) -> Dict[str, Any]:

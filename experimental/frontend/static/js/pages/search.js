@@ -11,7 +11,7 @@ function searchPage() {
     successMessage: "",
 
     async init() {
-      // Auto-focus search input
+
       this.$nextTick(() => {
         const searchInput = document.querySelector('input[x-model="query"]');
         if (searchInput) {
@@ -19,8 +19,6 @@ function searchPage() {
         }
       });
     },
-
-
 
     async search() {
       if (this.query.length < 2) {
@@ -42,7 +40,6 @@ function searchPage() {
         const data = await response.json();
         this.results = data.results || [];
 
-        // Split by type
         this.movieResults = this.results.filter((r) => r.media_type === "movie");
         this.tvResults = this.results.filter((r) => r.media_type === "tv");
         this.videoResults = this.results.filter((r) => r.media_type === "video");
@@ -96,12 +93,8 @@ function searchPage() {
       }
     },
 
-    // Unified notifications used via Alpine.store("notifications")
-
     async showDetail(item) {
       if (!item) return;
-
-
 
       const type = item.media_type || "movie";
       const identifier = item.uuid || item.tmdb_id || item.id;
@@ -129,7 +122,7 @@ function searchPage() {
           );
           this.selectedItem.in_library = true;
           this.selectedItem = null;
-          await this.search(); // Keep the search call
+          await this.search();
         } else {
           const error = await response.json();
           Alpine.store("notifications").error(
@@ -187,7 +180,6 @@ function searchPage() {
   };
 }
 
-// Register with Alpine
 document.addEventListener("alpine:init", () => {
   Alpine.data("searchPage", searchPage);
 });

@@ -36,7 +36,7 @@ async def list_plugins(user=Depends(get_current_admin_user)):
                 "id": plugin_id,
                 "manifest": plugin.manifest,
                 "has_ui": plugin.has_ui,
-                "enabled": True,  # For now, if it's in manager.plugins, it's loaded
+                "enabled": True,
             }
         )
     return plugins
@@ -53,12 +53,10 @@ async def get_marketplace(
     if not repositories:
         return {"repositories": []}
 
-    # Simple in-memory cache (15 minutes)
     cache_key = "marketplace_cache"
     cache_time_key = "marketplace_cache_time"
     cache_duration = timedelta(minutes=15)
 
-    # Check cache
     now = datetime.now()
     cache_time = await settings_mgr.get(cache_time_key)
     if cache_time and (now - datetime.fromisoformat(cache_time)) < cache_duration:
@@ -66,7 +64,6 @@ async def get_marketplace(
         if cached_data:
             return cached_data
 
-    # Official repository URL (hardcoded for identification)
     official_url = "https://raw.githubusercontent.com/vicking20/jf-resolve-plugin-repo/main/master.json"
 
     async def fetch_repository(url: str) -> Optional[Dict]:
@@ -79,7 +76,6 @@ async def get_marketplace(
             logging.warning(f"Failed to fetch repository {url}: {e}")
             return None
 
-    # Fetch all repositories concurrently
     tasks = [fetch_repository(url) for url in repositories]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -92,7 +88,6 @@ async def get_marketplace(
         registry_name = manifest.get("registry_name", "Unknown Registry")
         plugins_list = manifest.get("plugins", [])
 
-        # Enrich plugins with install status
         for plugin in plugins_list:
             plugin_id = plugin["id"]
             plugin["installed_version"] = None
@@ -109,7 +104,7 @@ async def get_marketplace(
                     remote_ver = Version(plugin.get("version", "0.0.0"))
                     plugin["update_available"] = remote_ver > installed_ver
                 except Exception:
-                    pass  # Version comparison failed, assume no update
+                    pass
 
         repositories_data.append(
             {
@@ -122,7 +117,6 @@ async def get_marketplace(
 
     response_data = {"repositories": repositories_data}
 
-    # Cache the result
     await settings_mgr.set(cache_key, response_data)
     await settings_mgr.set(cache_time_key, now.isoformat())
 
@@ -181,7 +175,6 @@ async def update_plugin_config(
         new_config = await plugin_manager.save_plugin_config(plugin_id, config)
         if plugin_id == "com.vicking20.tmdb-core":
             await SettingsManager(db).set("tmdb_api_key", config.get("api_key", ""))
-        # Re-trigger plugin on_load to apply changes
         plugin = plugin_manager.plugins.get(plugin_id)
         if plugin:
             await plugin.on_load()

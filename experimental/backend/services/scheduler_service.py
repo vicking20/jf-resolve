@@ -37,7 +37,6 @@ class SchedulerService:
         self.scheduler.start()
         self.is_running = True
 
-        # Schedule initial job configuration check
         await self.configure_jobs()
 
         log_service.info("Background scheduler started successfully")
@@ -49,7 +48,6 @@ class SchedulerService:
 
         log_service.info("Stopping background scheduler")
         try:
-            # Shutdown scheduler in executor to avoid blocking
             loop = asyncio.get_event_loop()
             await asyncio.wait_for(
                 loop.run_in_executor(None, self.scheduler.shutdown, False), timeout=2.0
@@ -70,25 +68,18 @@ class SchedulerService:
                 await settings.load_cache()
 
 
-                # Configure series update job
                 await self._configure_series_update_job(settings)
 
-                # Configure cache cleanup job
                 await self._configure_cache_cleanup_job(settings)
 
-                # Configure job cleanup job
                 await self._configure_job_cleanup_job()
 
-                # Configure temporary media cleanup job
                 await self._configure_temporary_media_cleanup_job()
 
-                # Configure Catalogue Sync job
                 await self._configure_catalogue_sync_job(settings)
 
-                # Run initial sync if no catalogues have items
                 await self.trigger_initial_sync_if_needed()
         except Exception as e:
-            # On first run, database might not exist yet - just skip configuration
             log_service.info(
                 f"Skipping scheduler configuration (database not ready): {e}"
             )
@@ -98,17 +89,14 @@ class SchedulerService:
         """Configure or remove series update job based on settings"""
         job_id = "series_update"
 
-        # Remove existing job if present
         if self.scheduler.get_job(job_id):
             self.scheduler.remove_job(job_id)
 
-        # Check if enabled
         enabled = await settings.get("series_update_enabled", False)
         if not enabled:
             log_service.info("Series update is disabled")
             return
 
-        # Get frequency
         frequency = await settings.get("series_update_frequency", "daily")
         trigger = self._get_cron_trigger(frequency)
 
@@ -128,11 +116,9 @@ class SchedulerService:
         """Configure or remove catalogue sync job (Runs every 24 hours)"""
         job_id = "catalogue_sync"
 
-        # Remove existing job if present
         if self.scheduler.get_job(job_id):
             self.scheduler.remove_job(job_id)
 
-        # Runs daily at 2 AM
         trigger = CronTrigger(hour=2, minute=0)
 
         self.scheduler.add_job(
@@ -155,26 +141,20 @@ class SchedulerService:
                 latest = latest.replace(tzinfo=timezone.utc)
             if latest is None or latest < datetime.now(timezone.utc) - timedelta(hours=24):
                 log_service.info("Catalogues are missing or stale, triggering catalogue sync...")
-                # Run in background to not block scheduler startup
                 asyncio.create_task(self._run_catalogue_sync())
 
     def _get_cron_trigger(self, frequency: str) -> Optional[CronTrigger]:
         """Convert frequency string to cron trigger"""
-        # All jobs run at 3 AM to avoid peak usage times
         hour = 3
         minute = 0
 
         if frequency == "daily":
-            # Every day at 3 AM
             return CronTrigger(hour=hour, minute=minute)
         elif frequency == "3days":
-            # Every 3 days at 3 AM (days divisible by 3)
             return CronTrigger(day="*/3", hour=hour, minute=minute)
         elif frequency == "weekly":
-            # Every Monday at 3 AM
             return CronTrigger(day_of_week="mon", hour=hour, minute=minute)
         elif frequency == "monthly":
-            # First day of every month at 3 AM
             return CronTrigger(day=1, hour=hour, minute=minute)
         else:
             return None
@@ -232,7 +212,6 @@ class SchedulerService:
         if self.scheduler.get_job(job_id):
             self.scheduler.remove_job(job_id)
 
-        # Get days setting (0 = disabled)
         cleanup_days = await settings.get("cache_cleanup_days", 30)
         try:
             cleanup_days = int(cleanup_days)
@@ -243,7 +222,6 @@ class SchedulerService:
             log_service.info("Cache cleanup is disabled")
             return
 
-        # Run daily at 4 AM to check for expired items
         trigger = CronTrigger(hour=4, minute=0)
 
         self.scheduler.add_job(
@@ -264,7 +242,6 @@ class SchedulerService:
         try:
             from sqlalchemy import select
             async with AsyncSessionLocal() as db:
-                # Collect protected IDs (Any TMDB ID in our database should be protected)
                 protected_ids = set()
                 result = await db.execute(
                     select(MediaExternalId.external_id)
@@ -287,7 +264,6 @@ class SchedulerService:
         if self.scheduler.get_job(job_id):
             self.scheduler.remove_job(job_id)
 
-        # Run daily at 5 AM
         trigger = CronTrigger(hour=5, minute=0)
 
         self.scheduler.add_job(
@@ -328,7 +304,6 @@ class SchedulerService:
         if self.scheduler.get_job(job_id):
             self.scheduler.remove_job(job_id)
 
-        # Run daily at 3 AM (before cache cleanup)
         from apscheduler.triggers.cron import CronTrigger
 
         trigger = CronTrigger(hour=3, minute=0)
@@ -362,8 +337,6 @@ class SchedulerService:
             async with get_db() as db:
                 total_removed = 0
 
-                # Clean temporary/transient MediaItems
-                # (Items that were created but never persisted to library)
                 result = await db.execute(
                     select(MediaItem).where(
                         and_(MediaItem.is_persisted == False, MediaItem.created_at < cutoff_date)
@@ -371,7 +344,6 @@ class SchedulerService:
                 )
                 temp_items = result.scalars().all()
                 for item in temp_items:
-                    # Delete associated playback sessions
                     await db.execute(
                         delete(PlaybackSession).where(
                             PlaybackSession.media_uuid == item.uuid
@@ -390,5 +362,4 @@ class SchedulerService:
             log_service.error(f"Temporary media cleanup failed: {e}")
 
 
-# Global scheduler instance
 scheduler_service = SchedulerService()

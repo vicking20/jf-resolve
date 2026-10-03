@@ -13,9 +13,6 @@ from .session import get_current_user
 logger = get_logger(__name__)
 
 
-# ===== Authentication Dependencies =====
-
-
 async def get_current_admin_user(
     user: User = Depends(get_current_user),
 ):
@@ -51,16 +48,9 @@ async def get_admin_user_page(
         from fastapi.responses import RedirectResponse
 
         logger.warning(f"Unauthorized access attempt to admin page by user: {user.username}")
-        # We use a RedirectResponse for page routes
         return RedirectResponse(url="/")
 
     return user
-
-
-# ===== Addon Dependencies =====
-
-
-# ===== Service Dependencies =====
 
 
 async def get_tmdb_service(db: AsyncSession = Depends(get_db)):
@@ -90,12 +80,6 @@ async def get_tmdb_service(db: AsyncSession = Depends(get_db)):
     return TMDBClient(api_key)
 
 
-# ===== Configuration Dependencies =====
-
-
-# ===== Content Rating Dependencies =====
-
-
 async def get_user_content_filter(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -114,17 +98,14 @@ async def get_user_content_filter(
 
     from ..models.user_profile import ContentRating, UserProfile
 
-    # Load user profile if exists
     result = await db.execute(select(UserProfile).where(UserProfile.user_id == user.id))
     profile = result.scalar_one_or_none()
 
-    # Get max content rating
     if profile and profile.enable_parental_controls:
         max_content_rating = profile.max_content_rating
     else:
         max_content_rating = ContentRating.ALL
 
-    # Get allowed paths from permissions
     allowed_paths = None
     if (
         not user.is_superuser
@@ -133,7 +114,6 @@ async def get_user_content_filter(
     ):
         allowed_paths = user.permissions.get("allowed_paths", [])
         if allowed_paths and len(allowed_paths) > 0:
-            # Only apply path filter if there are paths specified
             pass
         else:
             allowed_paths = None
@@ -143,8 +123,5 @@ async def get_user_content_filter(
         profile.enable_parental_controls if profile else False,
         allowed_paths,
     )
-
-
-# ===== Pagination Dependencies =====
 
 

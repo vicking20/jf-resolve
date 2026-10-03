@@ -18,7 +18,6 @@ class JFResolveException(Exception):
         super().__init__(self.message)
 
 
-# Authentication & Authorization
 class AuthenticationError(JFResolveException):
     """Authentication failed"""
 
@@ -40,7 +39,6 @@ class TokenExpiredError(AuthenticationError):
         super().__init__(message, code="TOKEN_EXPIRED", **kwargs)
 
 
-# External Services
 class ExternalServiceError(JFResolveException):
     """Base exception for external service errors"""
 

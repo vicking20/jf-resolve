@@ -36,12 +36,10 @@ class ScannerCoordinator:
         self.tmdb = tmdb
         self.mode_manager = ScannerModeManager(db)
 
-        # Initialize scanners
         self.batch_processor = BatchProcessor()
         self.active_scanner = ActiveScanner(db, tmdb, self.batch_processor)
         self.jit_scanner = JITScanner(tmdb)
 
-        # Get file watcher (global singleton)
         self.file_watcher = get_file_watcher()
 
     async def run_scan(
@@ -71,17 +69,12 @@ class ScannerCoordinator:
             f"Running scan of {library_path.path} in {mode} mode (smart={smart})"
         )
 
-        # Only active mode and video paths get persisted
         if mode == "active" or library_path.media_type in ["video", "video_series"]:
-            # Determine scan type (full vs incremental)
             use_incremental = False
 
             if smart and not force_rescan:
-                # TODO: Re-enable when file_manifests table exists
-                # For now, always use full scan
                 log_service.info("Using full scan (manifest feature disabled)")
 
-            # Run the appropriate scan
             if use_incremental:
                 return await self.active_scanner.incremental_scan(library_path, job)
             else:
@@ -89,8 +82,6 @@ class ScannerCoordinator:
                     library_path, job, force_rescan
                 )
         else:
-            # Lazy mode for movies/TV - no scanning needed
-            # (will be done JIT when browsing)
             log_service.info(
                 f"Lazy mode enabled for {library_path.media_type} - "
                 "items will be scanned on-demand"
@@ -115,10 +106,8 @@ class ScannerCoordinator:
         mode = await self.mode_manager.get_effective_mode(library_path)
 
         if mode == "lazy" and library_path.media_type in ["movie", "tv"]:
-            # JIT search
             return await self.jit_scanner.search_jit(library_path, query, limit)
         else:
-            # DB search
             from ..library_service import LibraryService
 
             library_service = LibraryService(
@@ -135,7 +124,6 @@ class ScannerCoordinator:
         - When scanner mode changes
         - When library paths are added/removed
         """
-        # Get all enabled library paths
         result = await self.db.execute(
             select(LibraryPath).where(
                 LibraryPath.enabled == True,
@@ -144,7 +132,6 @@ class ScannerCoordinator:
         )
         paths = result.scalars().all()
 
-        # Filter paths that should be watched based on mode
         watched_paths = []
         for path in paths:
             mode = await self.mode_manager.get_effective_mode(path)
@@ -153,9 +140,7 @@ class ScannerCoordinator:
             if self.mode_manager.should_watch_path(mode, media_type):
                 watched_paths.append(path)
 
-        # Configure file watcher
         if self.file_watcher.enabled:
-            # Set active scanner for the watcher
             self.file_watcher.active_scanner = self.active_scanner
             await self.file_watcher.reconfigure(watched_paths)
 
@@ -177,7 +162,6 @@ class ScannerCoordinator:
 
         log_service.info(f"Scanner mode changed to: {mode}")
 
-        # Trigger initial scans if switching to active mode
         if mode == "active":
             await self.trigger_initial_scans_if_needed()
 
@@ -190,20 +174,16 @@ class ScannerCoordinator:
         """
         global_mode = await self.mode_manager.get_global_mode()
 
-        # Get watched paths
         watched_path_ids = []
         if self.file_watcher.enabled:
             watched_path_ids = self.file_watcher.get_watched_paths()
 
-        # Get JIT cache stats
         cache_stats = self.jit_scanner.get_cache_stats()
 
-        # Get file watcher stats
         watcher_stats = (
             self.file_watcher.get_stats() if self.file_watcher.enabled else {}
         )
 
-        # Get recent scan jobs for status
         from ...models.media import LibraryScanJob
         
         scan_jobs_result = await self.db.execute(
@@ -244,7 +224,6 @@ class ScannerCoordinator:
         from sqlalchemy import select
         from ...models.library_path import LibraryPath
         
-        # Get all enabled library paths
         result = await self.db.execute(
             select(LibraryPath).where(LibraryPath.enabled == True)
         )
@@ -253,13 +232,9 @@ class ScannerCoordinator:
         for library_path in paths:
             mode = await self.mode_manager.get_effective_mode(library_path)
             
-            # Only scan paths that should use active scanning
             if mode == "active":
-                # TODO: Re-enable manifest check when file_manifests table is created
-                # For now, always trigger initial scan for active paths
                 log_service.info(f"Triggering initial active scan for {library_path.path}")
                 try:
-                    # Run scan in background to not block startup
                     import asyncio
                     asyncio.create_task(self.run_scan(library_path, force_rescan=True))
                 except Exception as e:
@@ -282,7 +257,6 @@ async def create_scanner_coordinator(
     """
     coordinator = ScannerCoordinator(db, tmdb)
 
-    # Configure file watchers on creation
     await coordinator.configure_file_watchers()
 
     return coordinator

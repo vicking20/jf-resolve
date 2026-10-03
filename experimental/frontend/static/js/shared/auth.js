@@ -1,13 +1,12 @@
-// Authentication utilities
 
 async function logout() {
   try {
-    // This request will clear the session cookie on the backend
+
     await fetch("/api/auth/logout", { method: "POST" });
   } catch (e) {
     console.error("Logout error:", e);
   }
-  // Redirect to login page
+
   window.location.href = "/login";
 }
 
@@ -47,6 +46,5 @@ async function getCurrentUser(forceRefresh = false) {
   return _currentUserPromise;
 }
 
-// Make globally available
 window.logout = logout;
 window.getCurrentUser = getCurrentUser;

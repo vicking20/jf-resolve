@@ -37,7 +37,6 @@ class TranscodingService:
         """
         cmd = ["ffmpeg"]
 
-        # Hardware acceleration setup
         hw_accel = transcode_settings.get("hardware_acceleration", "none")
 
         if hw_accel == "nvidia":
@@ -52,7 +51,7 @@ class TranscodingService:
             cmd.extend(["-hwaccel", "vulkan"])
             video_encoder = "h264_amf"
             hevc_encoder = "hevc_amf"
-        elif hw_accel == "videotoolbox":  # macOS
+        elif hw_accel == "videotoolbox":
             cmd.extend(["-hwaccel", "videotoolbox"])
             video_encoder = "h264_videotoolbox"
             hevc_encoder = "hevc_videotoolbox"
@@ -60,48 +59,35 @@ class TranscodingService:
             video_encoder = "libx264"
             hevc_encoder = "libx265"
 
-        # Fast seek before input
         if start_time > 0:
             cmd.extend(["-ss", str(start_time)])
 
-        # Input
         cmd.extend(["-i", input_url])
 
-        # Video encoding
         video_codec = probe_info.get("video_codec")
         target_video_codec = transcode_settings.get("target_video_codec", "h264")
 
-        # If video codec is unknown or not in supported list, transcode
         if (
             video_codec
             and video_codec != "unknown"
             and video_codec in client_profile.get("video", [])
         ):
-            # Codec compatible - copy stream
             cmd.extend(["-c:v", "copy"])
             log_service.info(f"Video: copying {video_codec} (compatible)")
         else:
-            # Need transcoding
             encoder = hevc_encoder if target_video_codec == "hevc" else video_encoder
             cmd.extend(["-c:v", encoder])
 
-            # Preset (only for software encoding)
             if hw_accel == "none":
                 preset = transcode_settings.get("transcode_preset", "veryfast")
                 cmd.extend(["-preset", preset])
 
-            # Quality settings depend on encoder type
             if "videotoolbox" in encoder:
-                # VideoToolbox (macOS) - use constant bitrate for better MSE predictability
                 cmd.extend(["-b:v", "4000k", "-maxrate", "4500k", "-bufsize", "8000k"])
-                # Removed explicit profile/level as they often cause -12902 (parameter error)
-                # VideoToolbox will auto-select valid profile/level based on resolution/bitrate
 
             elif "nvenc" in encoder or "qsv" in encoder or "amf" in encoder:
-                # Other hardware encoders - use CQ mode
                 cmd.extend(["-cq", "23"])
             else:
-                # Software encoder - use CRF
                 cmd.extend(["-crf", "23"])
             
             cmd.extend(["-pix_fmt", "yuv420p"])
@@ -110,7 +96,6 @@ class TranscodingService:
                 f"Video: transcoding {video_codec} -> {target_video_codec} ({encoder})"
             )
 
-            # HDR tone mapping if needed
             if (
                 probe_info.get("hdr")
                 and not client_profile.get("hdr")
@@ -118,7 +103,6 @@ class TranscodingService:
             ):
                 log_service.info("Applying HDR to SDR tone mapping")
 
-                # Use zscale for tone mapping
                 cmd.extend(
                     [
                         "-vf",
@@ -128,35 +112,28 @@ class TranscodingService:
                     ]
                 )
 
-        # Audio encoding
         audio_codec = probe_info.get("audio_codec")
         target_audio_codec = transcode_settings.get("target_audio_codec", "aac")
 
-        # Always explicitly map video and audio streams
-        # This ensures we have predictable output and audio is always included
         if audio_track_index is not None:
             cmd.extend(["-map", "0:v:0", "-map", f"0:a:{audio_track_index}"])
             log_service.info(
                 f"Stream mapping: video=0:v:0, audio=0:a:{audio_track_index}"
             )
         else:
-            # Map first video and first audio stream by default
             cmd.extend(["-map", "0:v:0", "-map", "0:a:0?"])
             log_service.info(
                 "Stream mapping: video=0:v:0, audio=0:a:0 (default first track)"
             )
 
-        # If audio codec is unknown or not in supported list, transcode
         if (
             audio_codec
             and audio_codec != "unknown"
             and audio_codec in client_profile.get("audio", [])
         ):
-            # Codec compatible - copy stream
             cmd.extend(["-c:a", "copy"])
             log_service.info(f"Audio: copying {audio_codec} (compatible)")
         else:
-            # Need transcoding
             if target_audio_codec == "aac":
                 cmd.extend(["-c:a", "aac", "-b:a", "192k"])
             elif target_audio_codec == "opus":
@@ -170,10 +147,8 @@ class TranscodingService:
                 f"Audio: transcoding {audio_codec} -> {target_audio_codec}"
             )
 
-        # HLS output settings
         segment_duration = transcode_settings.get("hls_segment_duration", 4)
         
-        # A restarted playlist has its own local timeline beginning at zero.
         start_number = 0
 
         cmd.extend(
@@ -183,23 +158,21 @@ class TranscodingService:
                 "-hls_time",
                 str(segment_duration),
                 "-hls_list_size",
-                "0",  # Keep all segments in playlist
+                "0",
                 "-hls_segment_type",
                 "mpegts",
                 "-hls_flags",
-                "independent_segments+temp_file",  # Use temp_file to avoid partial segment reads
+                "independent_segments+temp_file",
                 "-start_number",
                 str(start_number),
                 "-hls_segment_filename",
                 str(
                     Path(output_path).parent / "segment_%04d.ts"
-                ),  # 4 digits for longer content
+                ),
                 output_path,
             ]
         )
 
-        # Read text subtitles from the same input as video, avoiding a second
-        # torrent reader fetching minutes ahead of playback.
         for track in probe_info.get("subtitle_tracks", []):
             if not track.get("supported"):
                 continue
@@ -237,18 +210,14 @@ class TranscodingService:
         """
         from .transcode_manager import transcode_manager
 
-        # Clean up any stale HLS files from previous runs (stream_id is deterministic
-        # per URL, so old segments may still exist on disk from a prior server session)
         output_dir = transcode_manager.get_hls_output_dir(stream_id)
         if output_dir.exists():
             transcode_manager.cleanup_hls_files(stream_id)
         
-        # Create fresh output directory
         output_dir.mkdir(parents=True, exist_ok=True)
 
         playlist_path = output_dir / "master.m3u8"
 
-        # Build FFmpeg command
         ffmpeg_cmd = TranscodingService.build_ffmpeg_command(
             input_url,
             str(playlist_path),
@@ -260,7 +229,6 @@ class TranscodingService:
 
         log_service.info(f"Starting transcode: {' '.join(ffmpeg_cmd)}")
 
-        # Start FFmpeg process
         try:
             process = await asyncio.create_subprocess_exec(
                 *ffmpeg_cmd,
@@ -268,7 +236,6 @@ class TranscodingService:
                 stderr=None,
             )
 
-            # Register process with manager
             duration_val = probe_info.get("duration")
             if duration_val:
                 try:
@@ -291,20 +258,17 @@ class TranscodingService:
                 segment_duration=segment_duration
             )
 
-            # Wait for first segments to be ready - increased timeout for slow streams
             ready = await transcode_manager.wait_for_hls_ready(
                 playlist_path, timeout=45, process=process
             )
 
             if not ready:
-                # Kill process if not ready in time
                 try:
                     process.terminate()
                     await asyncio.wait_for(process.wait(), timeout=5)
                 except Exception:
                     process.kill()
 
-                # Try to capture any error output
                 stderr_output = ""
                 try:
                     stderr_output = (await process.stderr.read()).decode(
@@ -330,7 +294,6 @@ class TranscodingService:
 
         except Exception as e:
             log_service.error(f"Failed to start transcode: {e}")
-            # Cleanup
             await transcode_manager.terminate_process(stream_id)
             transcode_manager.cleanup_hls_files(stream_id)
             raise
@@ -343,9 +306,8 @@ class TranscodingService:
         Returns:
             List of available acceleration methods
         """
-        available = ["none"]  # Software encoding always available
+        available = ["none"]
 
-        # Check for NVIDIA GPU
         try:
             import subprocess
 
@@ -355,15 +317,12 @@ class TranscodingService:
         except Exception:
             pass
 
-        # Check for Intel QSV (basic check)
         if os.path.exists("/dev/dri"):
             available.append("intel")
 
-        # Check for VideoToolbox (macOS)
         if os.uname().sysname == "Darwin":
             available.append("videotoolbox")
 
-        # Check for AMD (basic check)
         try:
             result = subprocess.run(
                 ["lspci"], capture_output=True, timeout=5, text=True

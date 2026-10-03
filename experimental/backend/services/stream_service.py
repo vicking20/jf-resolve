@@ -12,12 +12,11 @@ from .log_service import log_service
 
 class StreamService:
     def __init__(self):
-        # Use a browser-like User-Agent to avoid being blocked
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         self.client = httpx.AsyncClient(
-            timeout=90.0,  # Increased for slow streams
+            timeout=90.0,
             follow_redirects=True,
             headers=headers,
             limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
@@ -43,7 +42,6 @@ class StreamService:
             force_transcode: Force transcoding even if compatible
             audio_track: Specific audio track index
         """
-        # Import here to avoid circular imports
         from .client_detection_service import ClientDetectionService
         from .ffprobe_service import FFprobeService
         from .transcode_manager import transcode_manager
@@ -55,32 +53,24 @@ class StreamService:
             force_transcode = True
             transcode_settings = dict(transcode_settings or {}, transcode_enabled=True)
 
-        # 1. Resolve source to actual URL
         stream_url = await self._resolve_source(source_path)
 
-        # 2. Check if transcoding is enabled
         if not transcode_settings or not transcode_settings.get(
             "transcode_enabled", True
         ):
-            # Direct proxy - no transcoding
-            # Note: We don't have probe_info here, so we can't validate safety
             log_service.info("Transcoding disabled - direct streaming without validation")
             return await self._handle_direct_stream(
                 stream_url, range_header, source_path, None
             )
 
-        # 3. Probe stream to get codec info
         probe_info = await FFprobeService.probe_stream(stream_url)
 
         if not probe_info:
-            # Probe failed - try to guess from URL extension if it's MKV
-            # MKV containers are never browser-compatible, so we should transcode
             url_lower = stream_url.lower()
             if ".mkv" in url_lower or "matroska" in url_lower:
                 log_service.info(
                     f"Probe failed but detected MKV from URL, forcing transcode"
                 )
-                # Create minimal probe_info to trigger transcoding
                 probe_info = {
                     "video_codec": "unknown",
                     "audio_codec": "unknown",
@@ -88,7 +78,6 @@ class StreamService:
                     "hdr": False,
                 }
             else:
-                # Can't determine format - fall back to direct proxy
                 log_service.info(
                     f"Probe failed for {stream_url[:100]}, using direct proxy"
                 )
@@ -96,12 +85,10 @@ class StreamService:
                     stream_url, range_header, source_path, None
                 )
 
-        # 4. Detect client capabilities
         client_profile = ClientDetectionService.detect_client_capabilities(
             user_agent or ""
         )
 
-        # 5. Check if transcoding needed
         needs_transcode = ClientDetectionService.needs_transcoding(
             client_profile, probe_info
         )
@@ -110,9 +97,7 @@ class StreamService:
             needs_transcode = True
             log_service.info("Forced transcoding enabled")
 
-        # 6. Direct streaming if compatible
         if not needs_transcode:
-            # Additional validation for direct streaming safety
             can_direct = ClientDetectionService.can_direct_stream(probe_info)
 
             if can_direct:
@@ -124,27 +109,19 @@ class StreamService:
                     stream_url, range_header, source_path, probe_info
                 )
             else:
-                # Client detection said compatible but direct streaming is not safe
-                # Force transcoding to ensure browser compatibility
                 log_service.info("Stream needs transcoding for browser compatibility")
                 needs_transcode = True
 
-        # 7. Transcoding required
         reason = ClientDetectionService.get_transcode_reason(client_profile, probe_info)
         log_service.info(f"Transcoding required: {reason}")
 
-        # Generate unique stream ID
         import uuid
 
-        # Each playback owns its files and process; cleanup must never affect
-        # another request for the same URL.
         stream_id = uuid.uuid4().hex
 
-        # Acquire transcode slot
         slot_result = await transcode_manager.acquire_slot(stream_id, timeout=30)
 
         if not slot_result["acquired"]:
-            # Queue full - handle based on settings
             behavior = slot_result.get("behavior", "wait")
 
             if behavior == "direct_proxy" and not torrent_source:
@@ -161,7 +138,6 @@ class StreamService:
             raise HTTPException(status_code=503, detail="No transcoding slot is available. Please try again.")
 
         try:
-            # Start transcoding
             transcode_result = await TranscodingService.start_transcode(
                 stream_id=stream_id,
                 input_url=stream_url,
@@ -171,7 +147,6 @@ class StreamService:
                 audio_track_index=audio_track,
             )
 
-            # Return JSON with HLS URL - frontend will handle loading it
             hls_url = f"/api/stream/hls/{stream_id}/master.m3u8"
             log_service.info(f"Transcoding ready, HLS playlist: {hls_url}")
             return JSONResponse(
@@ -189,14 +164,12 @@ class StreamService:
             await transcode_manager.release_slot_async(stream_id)
             if torrent_source:
                 raise HTTPException(status_code=502, detail="Unable to prepare torrent playback. Check that peers are available.") from e
-            # Fall back to direct proxy
             return await self._handle_direct_stream(
                 stream_url, range_header, source_path, probe_info
             )
 
     async def _resolve_source(self, source_path: str) -> str:
         """Resolve source path to actual stream URL"""
-        # 1. Resolve STRM files to their underlying URL
         if source_path.endswith(".strm"):
             try:
                 import asyncio
@@ -218,23 +191,19 @@ class StreamService:
         if is_torrent(source_path):
             return await torrent_service.resolve(source_path)
 
-        # 2. Remote URLs
         if source_path.startswith("http"):
             return source_path
 
-        # 3. Local files - return as file:// URL for ffprobe/ffmpeg compatibility
         return f"file://{os.path.abspath(source_path)}"
 
     async def _handle_direct_stream(
         self, stream_url: str, range_header: Optional[str], source_path: str, probe_info: Optional[Dict] = None
     ):
         """Handle direct streaming (no transcoding)"""
-        # For local files (file:// URLs)
         if stream_url.startswith("file://"):
             file_path = stream_url.replace("file://", "")
             return self._stream_local_file(file_path, range_header, probe_info)
 
-        # For remote URLs
         return await self._proxy_remote_stream(stream_url, range_header, probe_info)
 
     def _stream_local_file(self, file_path: str, range_header: Optional[str] = None, probe_info: Optional[Dict] = None):
@@ -245,7 +214,6 @@ class StreamService:
 
         file_size = path.stat().st_size
 
-        # Use probe_info for accurate Content-Type if available
         if probe_info and probe_info.get("container"):
             container = probe_info["container"].lower()
             if container == "mp4":
@@ -259,11 +227,9 @@ class StreamService:
             elif container == "mov":
                 content_type = "video/quicktime"
             else:
-                # Fallback to mime type guessing
                 mime_type, _ = mimetypes.guess_type(file_path)
                 content_type = mime_type or "video/mp4"
         else:
-            # Fallback to mime type guessing
             mime_type, _ = mimetypes.guess_type(file_path)
             content_type = mime_type or "video/mp4"
 
@@ -285,7 +251,7 @@ class StreamService:
         def iter_file():
             with open(path, "rb") as f:
                 f.seek(start)
-                chunk_size = 1024 * 1024  # 1MB chunks
+                chunk_size = 1024 * 1024
                 bytes_left = (end - start) + 1
                 while bytes_left > 0:
                     read_size = min(chunk_size, bytes_left)
@@ -307,9 +273,8 @@ class StreamService:
     async def _proxy_remote_stream(self, url: str, range_header: Optional[str] = None, probe_info: Optional[Dict] = None):
         """Proxy a remote HTTP stream with proper header forwarding"""
         headers = {
-            # Additional headers to look more like a real browser
             "Accept": "*/*",
-            "Accept-Encoding": "identity",  # Don't request compression for video
+            "Accept-Encoding": "identity",
             "Accept-Language": "en-US,en;q=0.9",
             "Sec-Fetch-Dest": "video",
             "Sec-Fetch-Mode": "no-cors",
@@ -320,13 +285,6 @@ class StreamService:
 
         try:
 
-            # We need to get the headers from the remote first to pass them to StreamingResponse
-            # But we don't want to make two requests.
-            # httpx allows us to peek at headers if we use the stream context manager.
-
-            # This is a bit tricky with StreamingResponse.
-            # Let's try to get the HEAD or just a limited GET first.
-            # Actually, we can just use the stream context directly.
 
             response = await self.client.send(
                 self.client.build_request("GET", url, headers=headers), stream=True
@@ -349,7 +307,6 @@ class StreamService:
                     forward_headers[key] = response.headers[key]
 
             if "Content-Type" not in forward_headers:
-                # Use probe_info for accurate Content-Type if available
                 if probe_info and probe_info.get("container"):
                     container = probe_info["container"].lower()
                     if container == "mp4":
@@ -371,7 +328,7 @@ class StreamService:
                 response.aiter_bytes(chunk_size=1024 * 1024),
                 status_code=response.status_code,
                 headers=forward_headers,
-                background=response.aclose,  # Ensure it's closed using the instance method
+                background=response.aclose,
             )
 
         except httpx.RequestError as e:

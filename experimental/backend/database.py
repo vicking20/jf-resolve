@@ -17,7 +17,6 @@ from .core.database import (
     async_engine as engine,
 )
 
-# Backward compatibility aliases
 AsyncSessionLocal = AsyncSessionLocal
 SessionLocal = SessionLocal
 
@@ -27,7 +26,6 @@ async def init_db():
     Initialize database (create tables)
     Safe to call multiple times - only creates tables that don't exist
     """
-    # Import all models to ensure they're registered with Base.metadata
     from .models import (  # noqa: F401
         Catalogue,
         CatalogueItem,
@@ -48,7 +46,6 @@ async def init_db():
     async with engine.begin() as conn:
 
         def create_tables(connection):
-            # checkfirst=True makes create_all skip existing tables
             Base.metadata.create_all(connection, checkfirst=True)
 
         await conn.run_sync(create_tables)

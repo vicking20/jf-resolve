@@ -44,7 +44,6 @@ class PopulateService:
 
         for series in series_list:
             try:
-                # Get TMDB ID from external IDs
                 tmdb_id = series.get_external_id("tmdb")
                 if not tmdb_id:
                     continue

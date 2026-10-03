@@ -13,11 +13,9 @@ class MediaExternalId(Base):
     id = Column(Integer, primary_key=True, index=True)
     media_uuid = Column(String(36), ForeignKey("media_items.uuid", ondelete="CASCADE"), nullable=False, index=True)
     
-    provider = Column(String(50), nullable=False, index=True)  # "imdb", "tmdb", "anilist", etc.
+    provider = Column(String(50), nullable=False, index=True)
     external_id = Column(String(100), nullable=False, index=True)
     
-    # Scoped by media_type if needed (e.g. TMDB has same IDs for movie/tv)
-    # But usually provider + external_id is enough if we enforce unique per item
     
     __table_args__ = (
         UniqueConstraint("provider", "external_id", name="uix_provider_id"),

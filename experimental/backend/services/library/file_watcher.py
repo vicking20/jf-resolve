@@ -76,7 +76,6 @@ class LibraryEventHandler(FileSystemEventHandler):
 
     def on_moved(self, event):
         """Called when a file is moved/renamed"""
-        # Treat as delete + create
         if hasattr(event, "src_path"):
             self._queue_event(event, "deleted")
         if hasattr(event, "dest_path") and self._is_video_file(event.dest_path):
@@ -109,10 +108,10 @@ class LibraryFileWatcher:
 
         self.enabled = True
         self.observer = Observer()
-        self.handlers: Dict[int, LibraryEventHandler] = {}  # path_id -> handler
-        self.watches: Dict[int, object] = {}  # path_id -> watch handle
+        self.handlers: Dict[int, LibraryEventHandler] = {}
+        self.watches: Dict[int, object] = {}
         self.event_queue = asyncio.Queue()
-        self.debounce_delay = 2.0  # seconds
+        self.debounce_delay = 2.0
         self.active_scanner = active_scanner
         self._processing_task = None
         self._running = False
@@ -130,7 +129,6 @@ class LibraryFileWatcher:
         self.observer.start()
         self._running = True
 
-        # Start event processing task
         self._processing_task = asyncio.create_task(self._process_events())
 
         log_service.info("File watcher service started")
@@ -142,12 +140,10 @@ class LibraryFileWatcher:
 
         log_service.info("Stopping file watcher service")
 
-        # Stop observer
         if self.observer.is_alive():
             self.observer.stop()
             self.observer.join(timeout=5.0)
 
-        # Cancel processing task
         if self._processing_task:
             self._processing_task.cancel()
             try:
@@ -222,16 +218,13 @@ class LibraryFileWatcher:
         if not self.enabled:
             return
 
-        # Get currently watched path IDs
         current_ids = set(self.handlers.keys())
         new_ids = {p.id for p in watched_paths}
 
-        # Unwatch paths that should no longer be watched
         to_remove = current_ids - new_ids
         for path_id in to_remove:
             self.unwatch_path(path_id)
 
-        # Watch new paths
         to_add = new_ids - current_ids
         for path in watched_paths:
             if path.id in to_add:
@@ -243,19 +236,16 @@ class LibraryFileWatcher:
 
         Collects events and waits for debounce delay before processing.
         """
-        pending_events: Dict[str, dict] = {}  # path -> latest event
+        pending_events: Dict[str, dict] = {}
 
         while self._running:
             try:
-                # Get event with timeout for debounce checking
                 try:
                     event = await asyncio.wait_for(self.event_queue.get(), timeout=1.0)
-                    # Update pending events (latest event wins)
                     pending_events[event["path"]] = event
                 except asyncio.TimeoutError:
                     pass
 
-                # Process debounced events
                 now = time.time()
                 ready_paths = [
                     path
@@ -301,8 +291,6 @@ class LibraryFileWatcher:
                 await cleanup.cleanup_single_file(file_path)
 
             elif event_type == "modified":
-                # For modified files, we could update metadata
-                # For now, just log it
                 log_service.debug(f"File modified: {file_path}")
 
         except Exception as e:
@@ -323,7 +311,6 @@ class LibraryFileWatcher:
         }
 
 
-# Global file watcher instance
 _file_watcher_instance = None
 
 

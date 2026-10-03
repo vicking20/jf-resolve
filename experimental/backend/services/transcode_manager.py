@@ -18,8 +18,8 @@ class TranscodeManager:
     def __init__(self):
         self.active_transcodes: Dict[str, Dict] = {}
         self.semaphore: Optional[Semaphore] = None
-        self.max_concurrent = 0  # 0 = unlimited
-        self.queue_full_behavior = "wait"  # wait, direct_proxy, close_player
+        self.max_concurrent = 0
+        self.queue_full_behavior = "wait"
         self.watchdog_task = None
 
     async def set_max_concurrent(self, max_count: int):
@@ -102,7 +102,6 @@ class TranscodeManager:
         if stream_id not in self.active_transcodes:
             return
         if stream_id in self.active_transcodes:
-            # Kill process if still running
             process = self.active_transcodes[stream_id].get("process")
             if process and process.returncode is None:
                 try:
@@ -344,20 +343,16 @@ class TranscodeManager:
                 try:
                     content = playlist_path.read_text()
 
-                    # Basic validation: playlist should have EXTINF entries
                     if "#EXTINF:" not in content:
                         log_service.stream(f"HLS playlist missing EXTINF entries: {playlist_path}")
                         await asyncio.sleep(0.5)
                         continue
 
-                    # Find segment references in playlist
                     segments = re.findall(r"(segment_\d+\.ts)", content)
 
                     if segments:
-                        # Check if at least the first segment file actually exists and has content
                         first_segment = output_dir / segments[0]
-                        if first_segment.exists() and first_segment.stat().st_size > 1000:  # At least 1KB
-                            # Additional validation: check if playlist has proper structure
+                        if first_segment.exists() and first_segment.stat().st_size > 1000:
                             lines = content.strip().split('\n')
                             if len(lines) >= 3 and lines[0] == "#EXTM3U":
                                 log_service.info(
@@ -383,5 +378,4 @@ class TranscodeManager:
         return False
 
 
-# Global transcode manager instance
 transcode_manager = TranscodeManager()

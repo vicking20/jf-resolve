@@ -36,7 +36,6 @@ class CleanupService:
         Returns:
             Number of files removed
         """
-        # Get all sources for this library path
         result = await self.db.execute(
             select(MediaSourceModel).where(
                 MediaSourceModel.library_path_id == library_path_id
@@ -49,7 +48,6 @@ class CleanupService:
 
         for source in all_sources:
             if source.file_path not in current_file_paths:
-                # File was deleted or renamed
                 log_service.info(f"Removing missing file from DB: {source.file_path}")
                 deleted_media_uuids.append(source.media_uuid)
                 await self.db.delete(source)
@@ -57,7 +55,6 @@ class CleanupService:
 
         await self.db.commit()
 
-        # Cleanup orphaned media items (items with no remaining sources)
         if deleted_media_uuids:
             await self._cleanup_orphaned_items(set(deleted_media_uuids))
 
@@ -72,7 +69,6 @@ class CleanupService:
         Returns:
             True if cleanup was performed, False if file not found
         """
-        # Find and delete MediaSource
         result = await self.db.execute(
             select(MediaSourceModel).where(MediaSourceModel.file_path == file_path)
         )
@@ -86,7 +82,6 @@ class CleanupService:
         await self.db.delete(source)
         await self.db.commit()
 
-        # Check if MediaItem has remaining sources
         await self._cleanup_orphaned_items({media_uuid})
 
         return True
@@ -98,16 +93,14 @@ class CleanupService:
         For episodes, also checks if parent series should be removed.
         """
         for media_uuid in media_uuids:
-            # Check if this media item has any remaining sources
             remaining = await self.db.execute(
                 select(MediaSourceModel).where(
                     MediaSourceModel.media_uuid == media_uuid
                 )
             )
             if remaining.scalar_one_or_none():
-                continue  # Still has sources, keep it
+                continue
 
-            # No sources left - get the item
             item_result = await self.db.execute(
                 select(MediaItemModel).where(MediaItemModel.uuid == media_uuid)
             )
@@ -117,7 +110,6 @@ class CleanupService:
                 continue
 
             parent_id = None
-            # For episodes and videos, check if parent should be cleaned up
             if (
                 item.media_type in (MediaType.EPISODE, MediaType.VIDEO)
                 and item.parent_id
@@ -129,7 +121,6 @@ class CleanupService:
             )
             await self.db.delete(item)
 
-            # Check if parent series/video_series should be removed
             if parent_id:
                 await self._maybe_cleanup_parent(parent_id)
 
@@ -139,14 +130,12 @@ class CleanupService:
         """
         Delete parent series/video_series if no children remain.
         """
-        # Check if parent has any remaining children
         children_result = await self.db.execute(
             select(MediaItemModel).where(MediaItemModel.parent_id == parent_uuid)
         )
         children = children_result.scalars().all()
 
         if not children:
-            # No children left - delete parent
             parent_result = await self.db.execute(
                 select(MediaItemModel).where(MediaItemModel.uuid == parent_uuid)
             )

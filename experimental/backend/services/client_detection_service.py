@@ -8,9 +8,6 @@ from .log_service import log_service
 class ClientDetectionService:
     """Service for detecting client capabilities and codec support"""
 
-    # Codec support profiles for different browsers/devices
-    # Note: "mov" is essentially the same container as "mp4" (both are ISO base media format)
-    # and browsers can play both natively
     CODEC_PROFILES = {
         "chrome": {
             "video": ["h264", "vp8", "vp9", "av1"],
@@ -72,7 +69,6 @@ class ClientDetectionService:
 
         user_agent_lower = user_agent.lower()
 
-        # Detect browser
         if "edg/" in user_agent_lower or "edge/" in user_agent_lower:
             browser = "edge"
         elif "chrome" in user_agent_lower or "crios" in user_agent_lower:
@@ -86,10 +82,8 @@ class ClientDetectionService:
         else:
             browser = "default"
 
-        # Get base profile
         profile = ClientDetectionService.CODEC_PROFILES[browser].copy()
 
-        # Enhance profile based on OS/device
         if "android" in user_agent_lower:
             profile["device"] = "android"
             if "h265" not in profile["video"] and "hevc" not in profile["video"]:
@@ -107,7 +101,6 @@ class ClientDetectionService:
         else:
             profile["device"] = "unknown"
 
-        # Detect if mobile for potential bandwidth constraints
         is_mobile = any(
             keyword in user_agent_lower
             for keyword in ["mobile", "android", "iphone", "ipad"]
@@ -140,7 +133,6 @@ class ClientDetectionService:
             )
             return True
 
-        # Log the incoming data for debugging
         log_service.stream(
             f"Transcode check - Stream info: video={stream_info.get('video_codec')}, "
             f"audio={stream_info.get('audio_codec')}, container={stream_info.get('container')}, "
@@ -152,7 +144,6 @@ class ClientDetectionService:
             f"hdr={client_profile.get('hdr')}"
         )
 
-        # Check video codec
         video_codec = stream_info.get("video_codec")
         if video_codec and video_codec not in client_profile.get("video", []):
             log_service.stream(
@@ -160,7 +151,6 @@ class ClientDetectionService:
             )
             return True
 
-        # Check audio codec
         audio_codec = stream_info.get("audio_codec")
         if audio_codec and audio_codec not in client_profile.get("audio", []):
             log_service.stream(
@@ -168,7 +158,6 @@ class ClientDetectionService:
             )
             return True
 
-        # Check container format
         container = stream_info.get("container")
         if container and container not in client_profile.get("containers", []):
             log_service.stream(
@@ -176,14 +165,12 @@ class ClientDetectionService:
             )
             return True
 
-        # Check HDR support
         if stream_info.get("hdr") and not client_profile.get("hdr"):
             log_service.stream(
                 "Transcode required: HDR content but client doesn't support HDR"
             )
             return True
 
-        # Check bitrate constraints
         max_bitrate = client_profile.get("max_bitrate")
         if max_bitrate and stream_info.get("bitrate", 0) > max_bitrate:
             log_service.stream(
@@ -250,24 +237,19 @@ class ClientDetectionService:
         video_codec = probe_info.get("video_codec", "").lower()
         audio_codec = probe_info.get("audio_codec", "").lower()
 
-        # Only allow direct streaming for these proven combinations:
-        # MP4 + H264 + AAC/MP3 - most reliable
         if container == "mp4":
             if video_codec == "h264":
                 if audio_codec in ["aac", "mp3"]:
                     return True
-            # MP4 with compatible audio only (no video or copy video)
             elif not video_codec or video_codec == "h264":
                 if audio_codec in ["aac", "mp3"]:
                     return True
 
-        # WebM + VP8/VP9 + Vorbis/Opus - also reliable for modern browsers
         if container == "webm":
             if video_codec in ["vp8", "vp9"]:
                 if audio_codec in ["vorbis", "opus"]:
                     return True
 
-        # For all other combinations, use HLS transcoding to ensure compatibility
         log_service.stream(
             f"Direct streaming not safe for {container}/{video_codec}/{audio_codec} - will transcode"
         )

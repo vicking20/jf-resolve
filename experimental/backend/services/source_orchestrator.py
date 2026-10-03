@@ -42,12 +42,10 @@ class SourceOrchestrator:
         """Parse source name to extract resolution, year, tags"""
         data = {"title": media_title, "resolution": "Unknown", "tag": None}
 
-        # Extract resolution
         res_match = self.RESOLUTION_RE.search(name)
         if res_match:
             data["resolution"] = res_match.group("res")
 
-        # Extract HDR/DV tags
         tags = []
         for tag_match in self.TAGS_RE.finditer(name):
             tags.append(tag_match.group("tag"))
@@ -84,13 +82,11 @@ class SourceOrchestrator:
             resolver: MediaResolver instance needed to persist transient items.
         """
         sources = {
-            "local": [],  # DB persisted + JIT found
-            "streams": {},  # Addon provided
+            "local": [],
+            "streams": {},
         }
 
-        # 1. Fetch from Database (if UUID exists)
         if media_uuid:
-            # If we're looking for a specific episode of a series, find its UUID
             lookup_uuid = media_uuid
             if season is not None and episode is not None and media_type in ("tv", "video_series"):
                 ep_result = await db.execute(
@@ -123,15 +119,12 @@ class SourceOrchestrator:
                         }
                     )
 
-        # 2. JIT Filesystem Scanning (only if no DB sources found)
-        # Skip scan entirely if we already have local sources - saves IO
         if not sources["local"] and title:
             jit_files = await smart_match_service.find_local_matches(
                 db, media_type, title, year, season, episode
             )
 
             if jit_files:
-                # If this is a transient item and JIT found files, persist it now
                 if transient_item and resolver and not media_uuid:
                     persisted_item = await resolver.persist(
                         db, transient_item, is_persisted=False
@@ -142,7 +135,6 @@ class SourceOrchestrator:
                         f"JIT auto-persisted transient item '{title}' as {media_uuid}"
                     )
 
-                # Auto-persist JIT matches to DB if we have a media_uuid
                 if media_uuid:
                     await self._persist_jit_sources(
                         db, media_uuid, jit_files, media_type
@@ -154,7 +146,7 @@ class SourceOrchestrator:
 
                     sources["local"].append(
                         {
-                            "id": None,  # Will have ID after refresh, but not critical for playback
+                            "id": None,
                             "source_type": "local",
                             "file_path": file_path,
                             "stream_title": f"Local: {filename}",
@@ -164,7 +156,6 @@ class SourceOrchestrator:
                         }
                     )
 
-        # 3. Fetch from Addons (requires IMDb ID)
         if imdb_id:
             addon_streams = await plugin_manager.get_all_streams(
                 imdb_id, media_type, season or 0, episode or 0
@@ -172,7 +163,6 @@ class SourceOrchestrator:
 
             torrents_enabled = await SettingsManager(db).get("torrent_playback_enabled", True)
 
-            # Post-process addon streams with our parsing
             for addon, streams in addon_streams.items():
                 processed_streams = []
                 for s in streams:
@@ -202,7 +192,6 @@ class SourceOrchestrator:
         This ensures future requests skip the filesystem scan.
         """
         try:
-            # Get library paths to find matching library_path_id
             result = await db.execute(
                 select(LibraryPath).where(LibraryPath.media_type == media_type)
             )
@@ -210,38 +199,32 @@ class SourceOrchestrator:
 
             persisted_count = 0
             for file_path in file_paths:
-                # Check if already exists
                 existing = await db.execute(
                     select(MediaSourceModel).where(
                         MediaSourceModel.file_path == file_path
                     )
                 )
                 if existing.scalar_one_or_none():
-                    continue  # Already persisted
+                    continue
 
-                # Find matching library path
                 library_path_id = None
                 for lp_path, lp_id in library_paths.items():
                     if file_path.startswith(lp_path):
                         library_path_id = lp_id
                         break
 
-                # Determine source type
                 ext = os.path.splitext(file_path)[1].lower()
                 source_type = "strm" if ext == ".strm" else "local"
 
-                # Get file size
                 file_size = None
                 try:
                     file_size = os.path.getsize(file_path)
                 except OSError:
                     pass
 
-                # Parse resolution from filename
                 filename = os.path.basename(file_path)
                 parsed = self.parse_source_name(filename, "")
 
-                # Create source entry
                 new_source = MediaSourceModel(
                     media_uuid=media_uuid,
                     library_path_id=library_path_id,
@@ -252,7 +235,7 @@ class SourceOrchestrator:
                     if parsed["resolution"] != "Unknown"
                     else None,
                     is_available=True,
-                    priority=0,  # Local sources have highest priority
+                    priority=0,
                 )
                 db.add(new_source)
                 persisted_count += 1
@@ -265,7 +248,6 @@ class SourceOrchestrator:
 
         except Exception as e:
             log_service.error(f"Failed to persist JIT sources: {e}")
-            # Don't fail the request, just log the error
 
 
 source_orchestrator = SourceOrchestrator()

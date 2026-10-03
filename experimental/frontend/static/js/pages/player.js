@@ -6,8 +6,7 @@ class VideoPlayer {
         this.art = null;
         this.streamId = null;
         this.duration = null;
-        
-        // State
+
         this.isUserSeeking = false;
         this.isInternalSeeking = false;
         this.hasStartedPlaying = false;
@@ -18,8 +17,7 @@ class VideoPlayer {
         this.subtitleText = null;
         this.subtitleUrl = null;
         this.fatalReported = false;
-        
-        // Callbacks/Hooks
+
         this.hooks = {
             onPlay: [],
             onPause: [],
@@ -31,7 +29,6 @@ class VideoPlayer {
             onClose: []
         };
 
-        // Timers
         this.pausedOverlayTimer = null;
     }
 
@@ -63,7 +60,7 @@ class VideoPlayer {
             data = await response.json();
             if (!data.url) throw new Error('Playback response contains no video URL');
         } else {
-            // Direct video responses must be loaded by the video element, not parsed as JSON.
+
             if (response.body) await response.body.cancel();
             data = { url: apiUrl, type: 'direct' };
         }
@@ -74,10 +71,10 @@ class VideoPlayer {
         this.streamId = data.stream_id;
         this.probeInfo = data.probe_info || {};
         if (this.streamId) this.startHeartbeat();
-        this.duration = data.probe_info?.duration 
-            ? parseFloat(data.probe_info.duration) 
+        this.duration = data.probe_info?.duration
+            ? parseFloat(data.probe_info.duration)
             : null;
-            
+
         if (this.streamId && startTime > 0) {
             const response = await fetch(`/api/stream/transcode/${this.streamId}/seek?position=${startTime}`, { method: 'POST' });
             if (!response.ok) throw new Error('Unable to resume this video');
@@ -122,12 +119,12 @@ class VideoPlayer {
             playsInline: true,
             autoPlayback: false,
             airplay: true,
-            theme: '#3b82f6', // Tailwind Primary color roughly
+            theme: '#3b82f6',
             lang: navigator.language.toLowerCase(),
             customType: {
                 m3u8: (video, url, art) => {
                     if (this.hls) this.hls.destroy();
-                    
+
                     if (!window.Hls || !Hls.isSupported()) {
                         if (video.canPlayType('application/vnd.apple.mpegurl')) {
                             video.src = url;
@@ -140,17 +137,17 @@ class VideoPlayer {
                         throw new Error('This browser does not support HLS playback');
                     }
                     let recoveryAttempts = 0;
-                    this.hls = new Hls({ 
+                    this.hls = new Hls({
                         startPosition: 0,
                         maxBufferLength: 30,
                         maxMaxBufferLength: 60,
                         liveDurationIntersection: false,
                         enableSafeDuration: true
                     });
-                    
+
                     this.hls.loadSource(url);
                     this.hls.attachMedia(video);
-                    
+
                     this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
                         this._applyDuration();
                         if (this.nextStartTime) {
@@ -158,7 +155,7 @@ class VideoPlayer {
                             this.nextStartTime = 0;
                         }
                     });
-                    
+
                     this.hls.on(Hls.Events.ERROR, (event, data) => {
                         if (data.fatal) {
                             console.error("[Player] HLS fatal error", data);
@@ -210,7 +207,7 @@ class VideoPlayer {
     }
 
     _applyDuration() {
-        // HLS keeps its local timeline. Full-movie timestamps belong to our UI.
+
     }
 
     _setupArtPlayerEvents() {
@@ -249,10 +246,9 @@ class VideoPlayer {
         });
 
         this.art.on('seek', async (currentTime) => {
-            // Artplayer emits seek before the video element seeking event.
-            // We can intercept the seek time.
+
             if (this.isUserSeeking || this.isInternalSeeking || this.streamId) return;
-            
+
             const seekTo = currentTime;
             if (!this.hasStartedPlaying || seekTo < 2) return;
 
@@ -292,11 +288,11 @@ class VideoPlayer {
         this.pausedOverlayTimer = setTimeout(() => {
             if (this.art && this.art.video.paused && this.overlay) {
                 this.overlay.style.display = 'block';
-                this.overlay.offsetHeight; // trigger reflow
+                this.overlay.offsetHeight;
                 this.overlay.classList.remove('opacity-0');
                 this.overlay.classList.add('opacity-100');
             }
-        }, 1000); // reduced from 3s to 1s for snappier UI
+        }, 1000);
     }
 
     startHeartbeat() {
@@ -308,7 +304,7 @@ class VideoPlayer {
                     clearInterval(this.heartbeatTimer);
                     this._trigger('onFatalError', new Error('Playback session expired. Please restart playback.'));
                 }
-            } catch (_) { /* The server lease handles a lost connection. */ }
+            } catch (_) {  }
         };
         this.heartbeatTimer = setInterval(ping, 30000);
     }
@@ -370,8 +366,7 @@ class VideoPlayer {
             if (this.isDestroyed) return;
             this.streamOffset = position;
             this.nextStartTime = 0;
-            // switchUrl resets currentTime and calls play while HLS is attaching.
-            // Set the URL directly and wait until the replacement media is ready.
+
             await new Promise((resolve, reject) => {
                 const video = this.art.video;
                 const timer = setTimeout(() => finish(new Error('Timed out loading the seek position')), 30000);
@@ -435,7 +430,7 @@ class VideoPlayer {
                     if (seconds(end) + (this.subtitleTimestampOffset || 0) <= this.streamOffset) keep = false;
                     return `${timestamp(seconds(start) + (this.subtitleTimestampOffset || 0) - this.streamOffset)} --> ${timestamp(seconds(end) + (this.subtitleTimestampOffset || 0) - this.streamOffset)}`;
                 });
-            // ArtPlayer displays cue text literally; strip subtitle formatting tags.
+
             return keep ? cue.replace(/<\/?(?:i|b|u|font|c|v|lang|ruby|rt)(?:[.\s][^>]*)?>/gi, '') : '';
         }).filter(Boolean);
         const oldUrl = this.subtitleUrl;
@@ -464,12 +459,12 @@ class VideoPlayer {
         if (this.keyHandler) document.removeEventListener('keydown', this.keyHandler);
         if (this.subtitleUrl) URL.revokeObjectURL(this.subtitleUrl);
         this.releaseWakeLock();
-        
+
         if (this.hls) {
             this.hls.destroy();
             this.hls = null;
         }
-        
+
         if (this.art) {
             this.art.destroy(false);
             this.art = null;

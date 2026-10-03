@@ -48,7 +48,6 @@ class CleanupTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('abandoned', manager.active_transcodes)
 
 
-
 class ProgressTests(unittest.IsolatedAsyncioTestCase):
     async def test_unwatched_media_returns_zero_progress(self):
         db = SimpleNamespace(execute=AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: None)))

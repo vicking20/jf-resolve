@@ -88,7 +88,6 @@ class TorrentService:
     @staticmethod
     def select_file(files, index=None):
         if index is not None:
-            # Stremio indexes are zero-based; TorrServer ids are one-based.
             selected = next((f for f in files if f['id'] == index + 1), None)
             if selected is None or Path(selected['path']).suffix.lower() not in VIDEO_EXTENSIONS:
                 raise HTTPException(status_code=400, detail='The selected torrent file is not a video')

@@ -21,9 +21,8 @@ from ..services.strm_service import StrmService
 router = APIRouter(prefix="/api/library", tags=["library"])
 
 
-# Schemas
 class MediaCreate(BaseModel):
-    identifier: Optional[str] = None  # Unified identifier (UUID or tmdb:id)
+    identifier: Optional[str] = None
     tmdb_id: Optional[int] = None
     imdb_id: Optional[str] = None
     media_type: Optional[str] = None
@@ -57,7 +56,6 @@ async def add_to_library(
         else:
             raise HTTPException(status_code=400, detail="Either identifier, tmdb_id, or imdb_id required")
 
-    # 1. Resolve item (Hybrid)
     item_dict = await resolver.resolve(db, identifier, item_data.media_type)
     if not item_dict:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -66,7 +64,6 @@ async def add_to_library(
         strm = await _write_strm_if_enabled(db, resolver, item_dict, current_user)
         return {"message": "Already in library", "uuid": item_dict["uuid"], "strm": strm}
 
-    # 2. Persist
     try:
         media_item = await resolver.persist(db, item_dict, is_persisted=True)
         await db.commit()
@@ -114,12 +111,10 @@ async def list_library_items(
     if type != "all":
         stmt = stmt.where(MediaItem.media_type == MediaType(type))
         
-    # Count total
     count_stmt = select(func.count()).select_from(stmt.subquery())
     count_result = await db.execute(count_stmt)
     total = count_result.scalar() or 0
 
-    # Paginate and fetch
     stmt = stmt.order_by(MediaItem.title).offset((page - 1) * limit).limit(limit)
     result = await db.execute(stmt)
     items = result.scalars().all()
@@ -211,16 +206,13 @@ async def purge_library(
 
     log_service.info("Purging all library items")
 
-    # Count items before deletion
     count_result = await db.execute(
         select(func.count()).select_from(MediaItem).where(MediaItem.is_persisted == True)
     )
     item_count = count_result.scalar() or 0
 
-    # Delete all media sources
     await db.execute(delete(MediaSourceModel))
 
-    # Delete all persisted media items
     await db.execute(delete(MediaItem).where(MediaItem.is_persisted == True))
 
     await db.commit()

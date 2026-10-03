@@ -67,15 +67,13 @@ class LoginThrottle:
 
     def record_failure(self, ip: str, username: str) -> None:
         now = time.monotonic()
-        if len(self._failures) > 10_000:  # Bound memory under random-username floods
+        if len(self._failures) > 10_000:
             for key in list(self._failures):
                 self._recent(key, now)
         self._failures[f"ip:{ip}"].append(now)
         self._failures[f"user:{username.lower()}"].append(now)
 
     def reset_username(self, username: str) -> None:
-        # The IP counter is deliberately kept: logging into one's own account must
-        # not let an attacker clear the limit while guessing someone else's password.
         self._failures.pop(f"user:{username.lower()}", None)
 
 

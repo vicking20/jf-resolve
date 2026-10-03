@@ -52,21 +52,18 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
         )
 
-    # Create user (first user is superuser)
     user = await auth_service.create_user(
         username=user_data.username, password=user_data.password, is_superuser=True
     )
 
-    # Create session cookie for the new user
     await create_session_cookie(response, user, request)
 
-    # Create setup completion flag file
     from ..core.config import settings as app_settings
 
     try:
         app_settings.SETUP_FLAG_FILE.touch(exist_ok=True)
     except Exception:
-        pass  # Non-critical if flag file creation fails
+        pass
 
     return await load_user_response(db, user.id)
 
@@ -136,7 +133,6 @@ async def change_password(
     """
     auth_service = AuthService(db)
 
-    # Verify current password
     if not auth_service.verify_password(
         password_data.current_password, current_user.hashed_password
     ):
@@ -145,14 +141,11 @@ async def change_password(
             detail="Current password is incorrect",
         )
 
-    # Update password
     current_user.hashed_password = auth_service.get_password_hash(
         password_data.new_password
     )
     await db.commit()
 
-    # Sessions are bound to the password hash, so every other session is now
-    # invalid; issue a fresh cookie for this browser.
     await create_session_cookie(response, current_user, request)
     return {"message": "Password changed successfully"}
 
@@ -168,7 +161,6 @@ async def auth_status(
     auth_service = AuthService(db)
     has_users = await auth_service.has_users()
 
-    # Reload user with profile relationship if authenticated
     user_response = await load_user_response(db, user.id) if user else None
 
     return {

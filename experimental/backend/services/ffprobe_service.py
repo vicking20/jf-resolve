@@ -12,7 +12,6 @@ from .log_service import log_service
 class FFprobeService:
     """Service for probing media streams with FFprobe"""
 
-    # In-memory cache for probe results (1 hour TTL, max 1000 items)
     _probe_cache = TTLCache(maxsize=1000, ttl=3600)
 
     @staticmethod
@@ -34,7 +33,6 @@ class FFprobeService:
             'bit_depth': 8
         }
         """
-        # Check cache first
         if stream_url in FFprobeService._probe_cache:
             log_service.info(f"FFprobe cache hit for {stream_url[:100]}")
             return FFprobeService._probe_cache[stream_url]
@@ -67,7 +65,6 @@ class FFprobeService:
             data = json.loads(stdout)
             result = FFprobeService._parse_probe_data(data)
 
-            # Cache the result
             FFprobeService._probe_cache[stream_url] = result
 
             log_service.info(
@@ -100,35 +97,30 @@ class FFprobeService:
             s for s in data.get("streams", []) if s.get("codec_type") == "audio"
         ]
 
-        # Detect HDR
         hdr = False
         bit_depth = 8
 
         if video_stream:
-            # Check for HDR color transfer characteristics
             color_transfer = video_stream.get("color_transfer", "")
             hdr = color_transfer in [
-                "smpte2084",  # HDR10
-                "arib-std-b67",  # HLG (Hybrid Log-Gamma)
+                "smpte2084",
+                "arib-std-b67",
             ]
 
-            # Get bit depth
             bit_depth = int(video_stream.get("bits_per_raw_sample", 8) or 8)
 
-            # Additional HDR checks
             color_space = video_stream.get("color_space", "")
             if color_space in ["bt2020nc", "bt2020c"]:
                 hdr = True
 
-        # Parse audio tracks with metadata
         audio_tracks = []
         for audio_idx, stream in enumerate(audio_streams):
             audio_tracks.append(
                 {
-                    "index": audio_idx,  # Audio-relative index for FFmpeg -map 0:a:X
+                    "index": audio_idx,
                     "stream_index": stream.get(
                         "index"
-                    ),  # Global stream index for reference
+                    ),
                     "codec": stream.get("codec_name"),
                     "language": stream.get("tags", {}).get("language", "und"),
                     "title": stream.get("tags", {}).get("title", ""),

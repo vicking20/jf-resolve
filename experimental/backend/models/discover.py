@@ -14,10 +14,9 @@ class DiscoverItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     media_uuid = Column(String(36), ForeignKey("media_items.uuid", ondelete="CASCADE"), nullable=False, index=True)
-    category = Column(String(50), nullable=False, index=True)  # e.g., 'popular_movies', 'popular_tv'
+    category = Column(String(50), nullable=False, index=True)
     position = Column(Integer, nullable=False, default=0)
     
-    # TMDB Page tracking for infinite scroll cache
     tmdb_page = Column(Integer, nullable=False, default=1)
     
     cached_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

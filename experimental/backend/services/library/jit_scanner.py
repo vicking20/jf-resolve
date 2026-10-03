@@ -26,7 +26,6 @@ class JITScanner:
     def __init__(self, tmdb: Optional[TMDBService] = None):
         self.tmdb = tmdb
         self.base = BaseScanner(tmdb)
-        # Simple in-memory cache for scanned paths
         self._cache = {}
         self._cache_timestamps = {}
 
@@ -48,7 +47,6 @@ class JITScanner:
         Returns:
             List of matching items
         """
-        # Get all files
         cache_key = f"files_{library_path.id}"
         video_files = self._cache.get(cache_key)
 
@@ -56,7 +54,6 @@ class JITScanner:
             video_files = await self.base.find_video_files_async(library_path.path)
             self._cache[cache_key] = video_files
 
-        # Extract metadata and filter by query
         query_lower = query.lower()
         matches = []
 
@@ -74,7 +71,6 @@ class JITScanner:
                 if len(matches) >= limit:
                     break
 
-        # Enrich matches with TMDB
         enriched = await self._enrich_with_tmdb(matches, library_path.media_type)
 
         return enriched
@@ -91,12 +87,10 @@ class JITScanner:
             Enriched items with TMDB poster/backdrop/year/etc
         """
         if not self.tmdb:
-            # No TMDB - return items as-is
             return items
 
         enriched = []
 
-        # Process in parallel with concurrency limit
         async def enrich_one(item: Dict):
             title = item.get("title")
             year = item.get("year")
@@ -104,13 +98,11 @@ class JITScanner:
             if not title:
                 return item
 
-            # Try TMDB matching
             tmdb_data = await self.base.match_with_tmdb(
                 title=title, year=year, media_type=media_type
             )
 
             if tmdb_data:
-                # Merge standardized TMDB data with file metadata
                 meta = tmdb_data.get("metadata", {})
                 images = tmdb_data.get("image_paths", {})
                 
@@ -130,7 +122,6 @@ class JITScanner:
 
             return item
 
-        # Enrich with concurrency limit
         semaphore = asyncio.Semaphore(10)
 
         async def enrich_with_limit(item):

@@ -2,12 +2,12 @@
 block content %}
 
 <div x-data="libraryPage">
-    <!-- Header with filters -->
+
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 mt-4 gap-4">
         <h1 class="text-3xl font-bold">My Library</h1>
 
         <div class="flex gap-2 flex-wrap">
-            <!-- Category Filter -->
+
             <div class="join">
                 <button class="join-item btn btn-sm" :class="filter === 'all' ? 'btn-primary' : ''"
                     @click="filter = 'all'; selectedPath = null; loadLibrary()">
@@ -27,8 +27,6 @@ block content %}
                 </button>
             </div>
 
-
-            <!-- View Mode -->
             <div class="join">
                 <button class="join-item btn btn-sm" :class="viewMode === 'grid' ? 'btn-active' : ''"
                     @click="viewMode = 'grid'">
@@ -48,7 +46,6 @@ block content %}
                 </button>
             </div>
 
-            <!-- Actions -->
             {% if user.is_superuser %}
             <button x-show="selectedItems.length > 0" @click="deleteSelected()" class="btn btn-warning btn-sm">
                 Delete Selected (<span x-text="selectedItems.length"></span>)
@@ -60,14 +57,10 @@ block content %}
         </div>
     </div>
 
-
-
-    <!-- Loading State -->
     <div x-show="loading" class="flex justify-center py-12">
         <span class="loading loading-spinner loading-lg"></span>
     </div>
 
-    <!-- Empty State -->
     <div x-show="!loading && items.length === 0" class="text-center py-12">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto mb-4 opacity-50" fill="none"
             viewBox="0 0 24 24" stroke="currentColor">
@@ -81,9 +74,8 @@ block content %}
         <a href="/" class="btn btn-primary">Go to Home</a>
     </div>
 
-    <!-- Grid View -->
     <div x-show="!loading && items.length > 0 && viewMode === 'grid'">
-        <!-- Select All Checkbox -->
+
         {% if user.is_superuser %}
         <div class="mb-4">
             <label class="label cursor-pointer justify-start gap-2 w-fit">
@@ -108,12 +100,10 @@ block content %}
                     </div>
                     {% endif %}
 
-                    <!-- Poster Area -->
                     <div class="aspect-[2/3] relative overflow-hidden">
                         <img :src="getPosterUrl(item.poster_path, item)" :alt="item.title"
                             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
 
-                        <!-- Overlay on Hover -->
                         <div
                             class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                             <div class="flex items-center gap-2 mb-1">
@@ -125,7 +115,6 @@ block content %}
                         </div>
                     </div>
 
-                    <!-- Compact Info Base -->
                     <div class="jfr-poster-info p-3">
                         <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
                             x-text="item.title"></h3>
@@ -147,9 +136,8 @@ block content %}
         </div>
     </div>
 
-    <!-- List View -->
     <div x-show="!loading && items.length > 0 && viewMode === 'list'">
-        <!-- Select All Checkbox -->
+
         {% if user.is_superuser %}
         <div class="mb-4">
             <label class="label cursor-pointer justify-start gap-2 w-fit">
@@ -211,7 +199,6 @@ block content %}
         </div>
     </div>
 
-    <!-- Pagination -->
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mt-16 mb-16" x-show="totalItems > 0">
         <div class="flex items-center gap-4">
             <span class="text-sm">

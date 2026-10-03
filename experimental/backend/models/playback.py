@@ -21,40 +21,32 @@ class PlaybackSession(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    # Reference to unified MediaItem
     media_uuid = Column(
         String(36), ForeignKey("media_items.uuid", ondelete="CASCADE"), nullable=False, index=True
     )
     
-    # Media type for quick filtering/logic without join
     media_type = Column(String(20), nullable=False, index=True)
 
-    # For episodic content (TV shows, video series branches)
     season = Column(Integer, nullable=True)
     episode = Column(Integer, nullable=True)
 
-    # Playback state
     current_time = Column(Float, default=0.0)
     duration = Column(Float, nullable=True)
 
-    # Resume source tracking
-    last_source_type = Column(String(20), nullable=True)  # "local", "strm", "stream"
+    last_source_type = Column(String(20), nullable=True)
     last_source_quality = Column(String(50), nullable=True)
     last_audio_track = Column(Integer, nullable=True)
 
-    # Metadata
     quality = Column(String(50), nullable=True)
     device = Column(String(100), nullable=True)
     completed = Column(Boolean, default=False)
 
-    # Timestamps
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     completed_at = Column(DateTime(timezone=True), nullable=True)
  
-    # Relationships
     user = relationship("User", back_populates="playback_sessions")
     media_item = relationship("MediaItem")
 
@@ -97,26 +89,21 @@ class SkipSegment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # Content identification
     media_uuid = Column(
         String(36), ForeignKey("media_items.uuid", ondelete="CASCADE"), nullable=False, index=True
     )
     
-    # Denormalized for quick lookups (optional)
     media_type = Column(String(20), nullable=False, index=True)
 
-    # For TV shows
     season = Column(Integer, nullable=True)
     episode = Column(Integer, nullable=True)
 
-    # Segment details
-    segment_type = Column(String(50), nullable=False)  # intro, outro, recap, credits
+    segment_type = Column(String(50), nullable=False)
     start_time = Column(Float, nullable=False)
     end_time = Column(Float, nullable=False)
 
-    # Metadata
     confidence = Column(Float, default=1.0)
-    source = Column(String(100))  # manual, ai, external_api
+    source = Column(String(100))
 
     @property
     def duration(self) -> float:
@@ -135,9 +122,5 @@ class SkipSegment(Base):
             "duration": self.duration,
             "confidence": self.confidence,
         }
-
-
-
-
 
 

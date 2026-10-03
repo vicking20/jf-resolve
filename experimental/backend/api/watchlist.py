@@ -19,14 +19,12 @@ from .media_unified import get_media_resolver
 router = APIRouter(prefix="/api/watchlist", tags=["watchlist"])
 
 
-# Schemas
 class WatchlistAdd(BaseModel):
     """Add to watchlist"""
 
-    identifier: Optional[str] = None  # Unified identifier (UUID or provider:id)
+    identifier: Optional[str] = None
     media_type: Optional[str] = None
 
-    # Transient item metadata (TMDB)
     tmdb_id: Optional[int] = None
     title: Optional[str] = None
     year: Optional[int] = None
@@ -45,16 +43,13 @@ async def add_to_watchlist(
     Add media to watchlist.
     If item is transient, it will be persisted first.
     """
-    # 1. Resolve item (Hybrid)
     item_dict = None
 
-    # CASE A: Identifier provided
     if data.identifier:
         item_dict = await resolver.resolve(db, data.identifier, data.media_type)
         if not item_dict:
             raise HTTPException(status_code=404, detail="Media not found")
 
-    # CASE B: No identifier, but TMDB metadata provided (Transient JIT)
     elif data.tmdb_id and data.media_type:
         item_dict = {
             "uuid": None,
@@ -67,7 +62,6 @@ async def add_to_watchlist(
                 "overview": data.overview,
                 "title": data.title,
                 "year": data.year,
-                # We could fetch more from TMDB here if needed, but this is enough for JIT
             },
             "is_persisted": False,
         }
@@ -76,14 +70,10 @@ async def add_to_watchlist(
             status_code=400, detail="Either identifier or tmdb_id+media_type required"
         )
 
-    # 2. Persist if it's transient
     media_item = None
     if not item_dict.get("is_persisted"):
-        # We need to ensure we have a full enough object for persist()
-        # resolver.persist() handles logic to check if it already exists by external ID
         media_item = await resolver.persist(db, item_dict)
     else:
-        # Fetch existing MediaItem
         result = await db.execute(
             select(MediaItem).where(MediaItem.uuid == item_dict["uuid"])
         )
@@ -92,8 +82,6 @@ async def add_to_watchlist(
     if not media_item:
         raise HTTPException(status_code=500, detail="Failed to persist media item")
 
-    # 3. Add to WatchlistItem table
-    # Check if already in watchlist
     result = await db.execute(
         select(WatchlistItem).where(
             WatchlistItem.user_id == current_user.id,
@@ -148,7 +136,6 @@ async def check_in_watchlist(
     """
     Check if media is in user's watchlist
     """
-    # We need to resolve the UUID first to check the WatchlistItem table
     item_dict = await resolver.resolve(db, identifier, media_type)
     if not item_dict or not item_dict.get("uuid"):
         return {"in_watchlist": False}

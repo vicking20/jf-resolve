@@ -20,23 +20,18 @@ from ..services.tmdb_service import TMDBService
 router = APIRouter(prefix="/api/playback", tags=["playback"])
 
 
-# Schemas
 class PlaybackUpdate(BaseModel):
     """Create/update playback progress (Unified Schema)"""
 
-    # Unified Identifier
-    identifier: str  # UUID or provider:id
-    media_type: str  # "movie", "tv", "video", "video_series"
+    identifier: str
+    media_type: str
 
-    # Progress
     position_seconds: float
     duration_seconds: Optional[float] = None
 
-    # Episode info
     season: Optional[int] = None
     episode: Optional[int] = None
 
-    # Extra metadata
     quality: Optional[str] = None
     device: Optional[str] = None
     source_type: Optional[str] = None
@@ -88,20 +83,17 @@ async def update_progress(
     Update playback progress.
     If item is transient, it will be persisted first.
     """
-    # Parse body (handles both regular fetch and sendBeacon)
     try:
         body = await request.json()
         data = PlaybackUpdate(**body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
 
-    # 1. Resolve item
 
     item_dict = await resolver.resolve(db, data.identifier, data.media_type)
     if not item_dict:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # 2. Persist if transient
     media_item = None
     if not item_dict.get("is_persisted"):
         media_item = await resolver.persist(db, item_dict)
@@ -113,7 +105,6 @@ async def update_progress(
     if not media_item:
         raise HTTPException(status_code=500, detail="Failed to resolve/persist media item")
 
-    # 3. Check for existing session
     query = select(PlaybackSession).where(
         PlaybackSession.user_id == current_user.id,
         PlaybackSession.media_uuid == media_item.uuid
@@ -130,7 +121,6 @@ async def update_progress(
     result = await db.execute(query)
     session = result.scalar_one_or_none()
 
-    # Progress Calculation
     completed = data.completed
     if data.duration_seconds and data.duration_seconds > 0:
         percentage = (data.position_seconds / data.duration_seconds) * 100
@@ -195,7 +185,6 @@ async def get_playback_progress(
         raise HTTPException(status_code=500, detail="TMDB API key not configured")
     resolver = MediaResolver(TMDBService(api_key))
 
-    # Resolve to UUID
     item_dict = await resolver.resolve(db, identifier, media_type)
     if not item_dict:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -251,7 +240,6 @@ async def get_continue_watching(
         item_dict = session.to_dict()
         media_info = await _get_media_info(db, session.media_uuid)
         if media_info:
-            # Flatten or nest media info
             item_dict["media"] = media_info
             items.append(item_dict)
 
@@ -279,7 +267,6 @@ async def get_all_playback_progress(
         raise HTTPException(status_code=500, detail="TMDB API key not configured")
     resolver = MediaResolver(TMDBService(api_key))
 
-    # Resolve to UUID
     item_dict = await resolver.resolve(db, identifier, media_type)
     if not item_dict:
         raise HTTPException(status_code=404, detail="Media not found")
@@ -346,12 +333,10 @@ async def mark_completed(
         raise HTTPException(status_code=500, detail="TMDB API key not configured")
     resolver = MediaResolver(TMDBService(api_key))
 
-    # Resolve to UUID
     item_dict = await resolver.resolve(db, identifier, media_type)
     if not item_dict:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    # If it's transient, we need to persist it to record completion
     media_item = None
     if not item_dict.get("is_persisted"):
         media_item = await resolver.persist(db, item_dict)
@@ -383,7 +368,6 @@ async def mark_completed(
         session.completed = True
         session.completed_at = datetime.utcnow()
     else:
-        # Create new completed entry
         session = PlaybackSession(
             user_id=current_user.id,
             media_uuid=media_item.uuid,
@@ -517,7 +501,6 @@ async def proxy_stream(
 
     url = await validate_source_url(url, current_user)
 
-    # Load transcode settings
     settings = SettingsManager(db)
     await settings.load_cache()
 

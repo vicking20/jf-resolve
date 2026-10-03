@@ -103,7 +103,6 @@ class DownloadService:
             job['status'] = 'cancelled'
             raise
         except Exception:
-            # Never persist upstream errors containing debrid credentials.
             job.update(status='failed', error='Download failed. The source may be unavailable, stalled, or storage may be full.')
         finally:
             if partial:

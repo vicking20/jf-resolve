@@ -5,16 +5,14 @@ from typing import List
 from backend.addons.interfaces import BasePlugin, CatalogueDefinition, CatalogueItem, CatalogueProvider
 from backend.database import AsyncSessionLocal
 
-# Import internal services
 from backend.services.settings_manager import SettingsManager
 from backend.services.tmdb_service import TMDBService
 
 logger = logging.getLogger(__name__)
 
-# Module-level cache
 _cache = {}
 _cache_expiry = {}
-CACHE_DURATION_SECONDS = 24 * 60 * 60  # 24 hours
+CACHE_DURATION_SECONDS = 24 * 60 * 60
 
 
 class Plugin(BasePlugin, CatalogueProvider):
@@ -70,11 +68,8 @@ class Plugin(BasePlugin, CatalogueProvider):
             return _cache[cache_key]
 
         logger.info(f"Fetching fresh items for {cache_key}")
-        # We need a new DB session since plugins might run async
         async with AsyncSessionLocal() as db:
             settings_manager = SettingsManager(db)
-            # Plugin configuration takes precedence; the global setting keeps
-            # first-run setup and the main Settings page compatible.
             api_key = await settings_manager.get("tmdb_api_key") or self.config.get("api_key")
 
             if not api_key:
@@ -104,14 +99,10 @@ class Plugin(BasePlugin, CatalogueProvider):
                     data = await tmdb.get_top_rated("tv", page)
                     results = data.get("results", [])
 
-                # Transform to CatalogueItem
                 items = []
                 for item in results:
-                    # Simple mapping - real implementation might need more robust parsing
                     parsed = tmdb.parse_media_item(item)
 
-                    # Handle implied media types
-                    # The parse_media_item helps but let's ensure type
                     media_type = parsed.get("media_type")
                     if catalogue_id.endswith("_movies") and media_type != "movie":
                         media_type = "movie"
@@ -131,7 +122,6 @@ class Plugin(BasePlugin, CatalogueProvider):
                         )
                     )
 
-                # Cache the results
                 _cache[cache_key] = items
                 _cache_expiry[cache_key] = time.time() + CACHE_DURATION_SECONDS
                 logger.info(f"Cached {len(items)} new items for {cache_key}")

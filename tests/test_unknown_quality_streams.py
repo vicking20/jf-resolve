@@ -17,8 +17,6 @@ PLUGIN_PATH = (
 
 
 def load_stream_manager_plugin():
-    # Marketplace plugins use the runtime alias `backend`; provide the same
-    # alias the application creates when loading plugins.
     sys.modules.setdefault("backend", importlib.import_module("experimental.backend"))
     spec = importlib.util.spec_from_file_location("test_stream_manager_plugin", PLUGIN_PATH)
     module = importlib.util.module_from_spec(spec)

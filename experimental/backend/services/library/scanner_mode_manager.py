@@ -36,22 +36,17 @@ class ScannerModeManager:
         Returns:
             "lazy" or "active"
         """
-        # 1. Check path-level override
         if library_path.scan_mode_override:
             return library_path.scan_mode_override
 
-        # 2. Get global setting
         global_mode = await self.settings.get("library_scanner_mode", "lazy")
 
-        # 3. In lazy mode, video/video_series paths always use active behavior
         if global_mode == "lazy":
             media_type = library_path.media_type
             if isinstance(media_type, str):
-                # Handle string media_type
                 if media_type in ["video", "video_series"]:
                     return "active"
             else:
-                # Handle MediaType enum
                 if media_type in [MediaType.VIDEO, MediaType.VIDEO_SERIES]:
                     return "active"
 
@@ -82,7 +77,6 @@ class ScannerModeManager:
         if mode == "active":
             return True
 
-        # Lazy mode: only watch video/video_series paths
         return media_type in ["video", "video_series"]
 
 
@@ -109,5 +103,4 @@ class ScannerModeManager:
         if isinstance(media_type, str):
             return media_type
         else:
-            # MediaType enum
             return media_type.value if hasattr(media_type, "value") else str(media_type)

@@ -17,12 +17,11 @@ from ..models.user import User
 router = APIRouter(prefix="/api/library/scan", tags=["library-scanner"])
 
 
-# Schemas
 class ScanRequest(BaseModel):
     """Request to scan library"""
 
-    path_id: Optional[int] = None  # null = scan all paths
-    force_rescan: bool = False  # Re-scan even if recently scanned (for mass updates)
+    path_id: Optional[int] = None
+    force_rescan: bool = False
 
 
 @router.post("/")
@@ -40,7 +39,6 @@ async def start_library_scan(
 
     """
 
-    # Validate path if specified
     if request.path_id:
         result = await db.execute(
             select(LibraryPath).where(LibraryPath.id == request.path_id)
@@ -51,7 +49,6 @@ async def start_library_scan(
         if not path.enabled:
             raise HTTPException(status_code=400, detail="Library path is disabled")
 
-    # Cancel any existing pending or running jobs
     result = await db.execute(
         select(LibraryScanJob).where(LibraryScanJob.status.in_(["pending", "running"]))
     )
@@ -60,8 +57,6 @@ async def start_library_scan(
     for existing_job in existing_jobs:
         existing_job.cancelled = True
 
-        # If it's pending, it hasn't started yet, so we can fail it immediately
-        # If it's running, we flag it as cancelled and the worker will pick it up
         if existing_job.status == "pending":
             existing_job.status = "failed"
             existing_job.error_message = "Cancelled by newer scan request"
@@ -70,7 +65,6 @@ async def start_library_scan(
     if existing_jobs:
         await db.commit()
 
-    # Create scan job
     job = LibraryScanJob(
         library_path_id=request.path_id,
         status="pending",
@@ -81,7 +75,6 @@ async def start_library_scan(
     await db.commit()
     await db.refresh(job)
 
-    # Queue background task using new scanner coordinator
     async def run_scan_job():
         """Background task to run the scan"""
         from ..database import AsyncSessionLocal
@@ -91,7 +84,6 @@ async def start_library_scan(
 
         async with AsyncSessionLocal() as scan_db:
             try:
-                # Update job status
                 result = await scan_db.execute(
                     select(LibraryScanJob).where(LibraryScanJob.id == job.id)
                 )
@@ -103,13 +95,11 @@ async def start_library_scan(
                 scan_job.started_at = datetime.now(timezone.utc)
                 await scan_db.commit()
 
-                # Initialize scanner coordinator
                 settings = SettingsManager(scan_db)
                 tmdb_key = await settings.get("tmdb_api_key")
                 tmdb = TMDBService(tmdb_key) if tmdb_key else None
                 coordinator = await create_scanner_coordinator(scan_db, tmdb)
 
-                # Get library path(s)
                 if scan_job.library_path_id:
                     result = await scan_db.execute(
                         select(LibraryPath).where(
@@ -123,7 +113,6 @@ async def start_library_scan(
                     )
                     paths = result.scalars().all()
 
-                # Run scans
                 total_new = 0
                 total_updated = 0
                 for library_path in paths:
@@ -134,7 +123,6 @@ async def start_library_scan(
                         total_new += scan_result.get("new", 0)
                         total_updated += scan_result.get("updated", 0)
 
-                # Mark completed
                 scan_job.status = "completed"
                 scan_job.completed_at = datetime.now(timezone.utc)
                 scan_job.new_media_added = total_new
@@ -142,7 +130,6 @@ async def start_library_scan(
                 await scan_db.commit()
 
             except Exception as e:
-                # Mark failed
                 if scan_job:
                     scan_job.status = "failed"
                     scan_job.error_message = str(e)
@@ -224,13 +211,11 @@ async def cancel_scan_job(
             status_code=400, detail="Can only cancel pending or running jobs"
         )
 
-    # Set cancelled flag
     job.cancelled = True
     if job.status == "pending":
         job.status = "failed"
         job.error_message = "Cancelled by user"
         job.completed_at = datetime.now(timezone.utc)
-    # If running, the background task will check the flag and cancel itself
     await db.commit()
 
     return {"message": "Scan job cancelled"}

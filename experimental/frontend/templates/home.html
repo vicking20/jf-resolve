@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block title %}Home - JF-Resolve{% endblock %} {%
 block content %}
 <div x-data="homePage">
-    <!-- Fixed Background Backdrop -->
+
     <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none" x-show="getCurrentHero() && !disableBackdrop"
         x-transition.opacity.duration.1000ms>
         <template x-if="getCurrentHero()">
@@ -16,7 +16,6 @@ block content %}
         </template>
     </div>
 
-    <!-- Featured dashboard -->
     <section class="jfr-home-dashboard grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_21rem] gap-4 md:gap-5 mt-3 md:mt-5 mb-8"
         :style="getUpcomingItems().length ? '' : 'grid-template-columns: minmax(0, 1fr)'" x-show="getCurrentHero()">
         <div class="jfr-home-hero relative h-[56vh] min-h-[390px] max-h-[660px] md:min-h-[520px] rounded-[1.6rem] overflow-hidden group jfr-glass transition-opacity duration-500 ease-out"
@@ -59,7 +58,6 @@ block content %}
             </div>
         </div>
 
-        <!-- Upcoming becomes a rail on desktop and a horizontal strip on smaller screens -->
         <aside class="jfr-upcoming jfr-glass rounded-[1.6rem] p-4 md:p-5 overflow-hidden" x-show="getUpcomingItems().length > 0">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-bold">Upcoming</h2>
@@ -86,13 +84,12 @@ block content %}
         </aside>
     </section>
 
-    <!-- Loading State -->
     <div x-show="loading" class="w-full flex justify-center py-20">
         <span class="loading loading-spinner loading-lg text-primary"></span>
     </div>
 
     <div x-show="!loading" class="space-y-4" x-cloak>
-        <!-- Continue Watching (Personalized) -->
+
         <div id="continue-watching" x-show="continueWatching && continueWatching.length > 0" class="scroll-mt-28">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="text-2xl font-bold text-white px-2">
@@ -107,7 +104,6 @@ block content %}
                             <img :src="getPosterUrl(item.poster_path, item)" :alt="item.title"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
 
-                            <!-- Title Overlay for missing posters -->
                             <template x-if="!item.poster_path">
                                 <div
                                     class="absolute inset-0 flex items-center justify-center p-4 text-center bg-black/40">
@@ -116,13 +112,11 @@ block content %}
                                 </div>
                             </template>
 
-                            <!-- Progress Bar Overlay -->
                             <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
                                 <div class="h-full bg-primary shadow-[0_0_10px_rgba(var(--p),0.5)]"
                                     :style="`width: ${item.progress_percentage}%`"></div>
                             </div>
 
-                            <!-- Play Overlay -->
                             <div
                                 class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <div
@@ -134,7 +128,6 @@ block content %}
                                 </div>
                             </div>
 
-                            <!-- Dismiss Button -->
                             <button @click.stop="removeContinueWatching(item)"
                                 class="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-error transition-all flex items-center justify-center backdrop-blur-md">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -154,7 +147,6 @@ block content %}
             </div>
         </div>
 
-        <!-- Watchlist -->
         <div x-show="watchlist && watchlist.length > 0">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="text-2xl font-bold text-white px-2">My Watchlist</h2>
@@ -164,13 +156,11 @@ block content %}
                     <div class="jfr-poster-card group relative flex-shrink-0 w-40 md:w-48 cursor-pointer"
                         @click="showDetail(item, $event)" @mouseenter="updateHero(item)" @mouseleave="updateHero(null)">
 
-                        <!-- Poster Area -->
                         <div class="aspect-[2/3] relative overflow-hidden bg-base-200">
                             <img :src="getPosterUrl(null, item)" :alt="item.title" loading="lazy"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 onerror="this.src='/static/images/default_poster.png'" />
 
-                            <!-- Overlay on Hover -->
                             <div
                                 class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                                 <div class="flex items-center gap-2 mb-1">
@@ -187,7 +177,6 @@ block content %}
                             </div>
                         </div>
 
-                        <!-- Compact Info Base -->
                         <div class="jfr-poster-info p-3">
                             <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
                                 x-text="item.title"></h3>
@@ -205,7 +194,6 @@ block content %}
             </div>
         </div>
 
-        <!-- Recently Added -->
         <div x-show="recentlyAdded && recentlyAdded.length > 0">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="text-2xl font-bold text-white px-2">Recents</h2>
@@ -215,13 +203,11 @@ block content %}
                     <div class="jfr-poster-card group relative flex-shrink-0 w-40 md:w-48 cursor-pointer"
                         @click="showDetail(item, $event)" @mouseenter="updateHero(item)" @mouseleave="updateHero(null)">
 
-                        <!-- Poster Area -->
                         <div class="aspect-[2/3] relative overflow-hidden bg-base-200">
                             <img :src="getPosterUrl(null, item)" :alt="item.title" loading="lazy"
                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 onerror="this.src='/static/images/default_poster.png'" />
 
-                            <!-- Overlay on Hover -->
                             <div
                                 class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                                 <div class="flex items-center gap-2 mb-1">
@@ -238,7 +224,6 @@ block content %}
                             </div>
                         </div>
 
-                        <!-- Compact Info Base -->
                         <div class="jfr-poster-info p-3">
                             <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
                                 x-text="item.title"></h3>
@@ -256,7 +241,6 @@ block content %}
             </div>
         </div>
 
-        <!-- Dynamic Catalogues from Plugins -->
         <template x-if="isReady && catalogues.length > 0">
             <div class="space-y-4">
                 <template x-for="catalogue in catalogues" :key="catalogue.slug">
@@ -278,14 +262,12 @@ block content %}
                                         @click="showDetail(item, $event)" @mouseenter="updateHero(item)"
                                         @mouseleave="updateHero(null)">
 
-                                        <!-- Poster Area -->
                                         <div class="aspect-[2/3] relative overflow-hidden bg-base-200">
                                             <img :src="getPosterUrl(item.poster_url, item)" :alt="item.title"
                                                 loading="lazy"
                                                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                 onerror="this.src='/static/images/default_poster.png'" />
 
-                                            <!-- Overlay on Hover -->
                                             <div
                                                 class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
                                                 <div class="flex items-center gap-2 mb-1">
@@ -304,7 +286,6 @@ block content %}
                                             </div>
                                         </div>
 
-                                        <!-- Compact Info Base -->
                                         <div class="jfr-poster-info p-3">
                                             <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
                                                 x-text="item.title"></h3>

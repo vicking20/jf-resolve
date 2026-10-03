@@ -7,7 +7,6 @@ from typing import Dict, List, Optional, Tuple
 
 from ..tmdb_service import TMDBService
 
-# Supported video extensions
 VIDEO_EXTENSIONS = {
     ".mp4",
     ".mkv",
@@ -25,23 +24,20 @@ VIDEO_EXTENSIONS = {
     ".strm",
 }
 
-# Common patterns for extracting metadata from filenames
-# Supports both strict "Title - (Year)" and flexible "Title.2023" formats
 MOVIE_PATTERNS = [
-    r"^(?P<title>.+?)\s+-\s+\((?P<year>\d{4})\)",  # Strict: Movie Name - (2023).mkv
-    r"^(?P<title>.+?)[.\s]+\((?P<year>\d{4})\)",  # Flexible: Movie Name (2023).mkv
-    r"^(?P<title>.+?)[.\s]+(?P<year>\d{4})",  # Scene: Movie.Name.2023.1080p.mkv
-    r"^(?P<title>.+)$",  # Fallback: Just the title
+    r"^(?P<title>.+?)\s+-\s+\((?P<year>\d{4})\)",
+    r"^(?P<title>.+?)[.\s]+\((?P<year>\d{4})\)",
+    r"^(?P<title>.+?)[.\s]+(?P<year>\d{4})",
+    r"^(?P<title>.+)$",
 ]
 
 TV_PATTERNS = [
-    r"^(?P<title>.+?)\s+-\s+S(?P<season>\d+)E(?P<episode>\d+)",  # Strict: Show Name - S01E05.mkv
-    r"^(?P<title>.+?)[.\s]+S(?P<season>\d+)E(?P<episode>\d+)",  # Flexible: Show.Name.S01E05.mkv
-    r"^(?P<title>.+?)[.\s]+(?P<season>\d+)x(?P<episode>\d+)",  # Flexible: Show.Name.1x05.mkv
-    r"^(?P<title>.+)$",  # Fallback: Just the title
+    r"^(?P<title>.+?)\s+-\s+S(?P<season>\d+)E(?P<episode>\d+)",
+    r"^(?P<title>.+?)[.\s]+S(?P<season>\d+)E(?P<episode>\d+)",
+    r"^(?P<title>.+?)[.\s]+(?P<season>\d+)x(?P<episode>\d+)",
+    r"^(?P<title>.+)$",
 ]
 
-# Common quality/resolution patterns
 QUALITY_RE = re.compile(
     r"[-.\s]\[?(?P<quality>2160p|1080p|720p|480p|360p|4k|8k)\]?", re.IGNORECASE
 )
@@ -90,14 +86,11 @@ class BaseScanner:
         """
         metadata = {}
 
-        # Clean filename (remove extension)
         name = os.path.splitext(filename)[0]
 
-        # Replace underscores with spaces (common in filenames)
         name = name.replace("_", " ")
 
         if media_type == "tv":
-            # Try TV patterns
             for pattern in TV_PATTERNS:
                 match = re.match(pattern, name, re.IGNORECASE)
                 if match:
@@ -110,14 +103,11 @@ class BaseScanner:
                     metadata["media_type"] = "tv"
                     return metadata
 
-            # Fallback
-            # Fallback
             metadata["title"] = name.replace(".", " ").strip()
             metadata["media_type"] = "tv"
             return metadata
 
         elif media_type == "movie":
-            # Extract Quality and Tags first
             quality_match = QUALITY_RE.search(name)
             if quality_match:
                 metadata["quality"] = quality_match.group("quality").lower()
@@ -128,7 +118,6 @@ class BaseScanner:
                 metadata["tags"] = tag_match.group("tag")
                 name = name[: tag_match.start()] + name[tag_match.end() :]
 
-            # Try movie patterns
             for pattern in MOVIE_PATTERNS:
                 match = re.match(pattern, name.strip(), re.IGNORECASE)
                 if match:
@@ -139,18 +128,15 @@ class BaseScanner:
                     metadata["media_type"] = "movie"
                     return metadata
 
-            # Fallback
             metadata["title"] = name.replace(".", " ").strip()
             metadata["media_type"] = "movie"
             return metadata
 
-        # User / Home Video Fallback
         if media_type == "video" or media_type == "video_series":
             metadata["title"] = name.replace(".", " ").strip()
             metadata["media_type"] = media_type
             return metadata
 
-        # Unknown type - return basic metadata
         metadata["title"] = name.replace(".", " ").strip()
         return metadata
 
@@ -179,28 +165,22 @@ class BaseScanner:
             if not results or not results.get("results"):
                 return None
 
-            # Filter and rank results
             matches = []
             for res in results["results"]:
                 res_title = res.get("title") or res.get("name")
                 res_date = res.get("release_date") or res.get("first_air_date")
                 res_year = int(res_date.split("-")[0]) if res_date else None
 
-                # 1. Exact Title Match
                 title_match = res_title and res_title.lower() == title.lower()
 
-                # 2. Year Match logic
                 year_match = False
                 if year and res_year:
-                    # Allow +/- 1 year difference (TMDB dates vs file dates can vary)
                     if abs(res_year - year) <= 1:
                         year_match = True
                 elif not year:
-                    # If no year in filename, we don't penalize based on year
                     year_match = True
 
                 if title_match and year_match:
-                    # Strongest match - fetch full details
                     tmdb_id = res.get("id")
                     if tmdb_id:
                         details = await self.tmdb.get_details(tmdb_id, media_type)
@@ -211,7 +191,6 @@ class BaseScanner:
                 if title_match or (year and year_match):
                     matches.append(res)
 
-            # If we have a year and no title+year match, we should be careful
             if year and not any(
                 int(
                     (r.get("release_date") or r.get("first_air_date") or "0").split(
@@ -223,7 +202,6 @@ class BaseScanner:
             ):
                 return None
 
-            # Fallback to the first match if it exists - fetch full details
             if matches:
                 tmdb_id = matches[0].get("id")
                 if tmdb_id:
@@ -313,17 +291,13 @@ class BaseScanner:
         path_parts = relative_path.split(os.sep)
 
         if len(path_parts) == 1:
-            # File directly in library root = standalone video
             return False, None, None
 
-        # File in subfolder = part of series
         series_name = path_parts[0]
 
-        # Detect season from folder structure
         season_number = None
         if len(path_parts) >= 3:
             season_folder = path_parts[1]
-            # Try to extract number from "Season 1", "S01", "Part 2", etc.
             match = re.search(r"(\d+)", season_folder)
             if match:
                 season_number = int(match.group(1))

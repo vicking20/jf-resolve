@@ -8,7 +8,7 @@ function discoverPage() {
         observer: null,
 
         init() {
-            // Restore state if navigating back
+
             const state = history.state;
             if (state && state.discoverTab) {
                 this.activeTab = state.discoverTab;
@@ -35,7 +35,7 @@ function discoverPage() {
                 const data = await response.json();
 
                 if (data.items && data.items.length > 0) {
-                    // Filter duplicates just in case
+
                     const newItems = data.items.filter(newItem =>
                         !this.items.some(existing => existing.uuid === newItem.uuid)
                     );
@@ -56,7 +56,6 @@ function discoverPage() {
             if (this.activeTab === tab) return;
             this.activeTab = tab;
 
-            // Save state
             const url = new URL(window.location);
             history.replaceState({ discoverTab: tab }, '', url);
 
@@ -89,14 +88,13 @@ function discoverPage() {
             const type = item.media_type || 'movie';
             const tmdbId = item.tmdb_id || item.id;
 
-            // Use the global helper if available, otherwise construct backend URL
             if (window.getPosterUrl) return window.getPosterUrl(posterPath, type, tmdbId);
 
             return `/api/media/images/poster/${item.uuid}`;
         },
 
         showDetail(item) {
-            // Save scroll position and tab
+
             const scrollPos = window.scrollY;
             history.replaceState({
                 discoverTab: this.activeTab,

@@ -16,13 +16,11 @@ class MetadataService:
 
     def __init__(self, metadata_dir: Path = None):
         if metadata_dir is None:
-            # Default to data/metadata folder in project root
             metadata_dir = Path("./data/metadata")
 
         self.metadata_dir = metadata_dir
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create subdirectories
         (self.metadata_dir / "movies").mkdir(exist_ok=True)
         (self.metadata_dir / "tv").mkdir(exist_ok=True)
 
@@ -36,10 +34,8 @@ class MetadataService:
         elif media_type in ["series", "tv"]:
             type_dir = "tv"
         else:
-            # Default for other types, e.g., custom videos
             type_dir = "videos"
 
-        # Ensure item_id is string
         dir_name = str(item_id)
 
         media_dir = self.metadata_dir / type_dir / dir_name
@@ -55,10 +51,8 @@ class MetadataService:
     ):
         """Save metadata (images only, NFO removed) for a media item"""
         try:
-            # Ensure we have the directory
             media_dir = self.get_media_dir(media_type, item_id)
 
-            # Download images using the new cache_image system
             if download_images:
                 poster_path = tmdb_data.get("poster_path")
                 if poster_path:
@@ -102,15 +96,13 @@ class MetadataService:
                     if not media_dir.is_dir():
                         continue
 
-                    # Protect library items
                     try:
                         dir_id = int(media_dir.name)
                         if dir_id in protected_ids:
                             continue
                     except ValueError:
-                        pass # Non-integer ID, probably skip anyway or check differently
+                        pass
 
-                    # If empty or checks fail, remove it (Checking poster.jpg as marker)
                     should_remove = False
                     poster_path = media_dir / "poster.jpg"
 
@@ -151,18 +143,15 @@ class MetadataService:
         import os
 
         try:
-            # Determine target directory and filename
             target_dir = self.get_media_dir(media_type, tmdb_id)
             filename = f"{image_type}.jpg"
             size = "w500" if image_type == "poster" else "original"
 
             target_path = target_dir / filename
 
-            # If already exists and valid size, return it
             if target_path.exists() and target_path.stat().st_size > 0:
                 return target_path
 
-            # Download
             url = f"https://image.tmdb.org/t/p/{size}{tmdb_path}"
 
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -173,7 +162,6 @@ class MetadataService:
                     )
                     return None
 
-                # Atomic write
                 tmp_path = target_path.with_suffix(".tmp")
                 with open(tmp_path, "wb") as f:
                     f.write(response.content)
@@ -181,11 +169,9 @@ class MetadataService:
                 os.replace(tmp_path, target_path)
                 logger.info(f"Cached {image_type} for {media_type}:{tmdb_id}")
 
-                # Probabilistically check cache size (1 in 20 downloads)
                 import random
 
                 if random.random() < 0.05:
-                    # Run in background to not block response
                     asyncio.create_task(self.enforce_cache_size_limit(protected_ids=protected_ids))
 
                 return target_path
@@ -223,10 +209,8 @@ class MetadataService:
                 f"Cache size ({current_size:.2f} MB) exceeds limit ({max_size_mb} MB). Evicting..."
             )
 
-            # Collect all media directories with their mtime
             media_dirs = []
 
-            # Movie/Series directories
             for type_dir in ["movies", "series"]:
                 type_path = self.metadata_dir / type_dir
                 if not type_path.exists():
@@ -234,7 +218,6 @@ class MetadataService:
 
                 for m_dir in type_path.iterdir():
                     if m_dir.is_dir():
-                        # Protect library items
                         try:
                             dir_id = int(m_dir.name)
                             if dir_id in protected_ids:
@@ -242,7 +225,6 @@ class MetadataService:
                         except ValueError:
                             pass
 
-                        # Use poster.jpg mtime as proxy for last access/update
                         try:
                             mtime = m_dir.stat().st_mtime
                             poster_path = m_dir / "poster.jpg"
@@ -253,10 +235,8 @@ class MetadataService:
                         except:
                             pass
 
-            # Sort by oldness (mtime ascending)
             media_dirs.sort(key=lambda x: x[0])
 
-            # Delete until under limit (target 80% of max to avoid thrashing)
             target_size = max_size_mb * 0.8
             deleted_count = 0
 
@@ -264,7 +244,6 @@ class MetadataService:
                 if current_size <= target_size:
                     break
 
-                # Calculate size of dir to subtract
                 dir_size = 0
                 for f in m_dir.rglob("*"):
                     if f.is_file():
@@ -284,5 +263,4 @@ class MetadataService:
             logger.error(f"Error during cache eviction: {e}")
 
 
-# Global instance
 metadata_service = MetadataService()

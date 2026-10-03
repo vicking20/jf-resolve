@@ -17,7 +17,6 @@ class LogService:
         self.log_dir.mkdir(exist_ok=True, parents=True)
         self.console_output = console_output
 
-        # Setup loggers
         self.error_logger = self._setup_logger("error", logging.ERROR)
         self.info_logger = self._setup_logger("info", logging.INFO)
         self.stream_logger = self._setup_logger("stream", logging.DEBUG)
@@ -27,7 +26,6 @@ class LogService:
         logger = logging.getLogger(f"jfresolve.{name}")
         logger.setLevel(level)
 
-        # Prevent duplicate handlers
         if logger.handlers:
             return logger
 
@@ -36,7 +34,6 @@ class LogService:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-        # Create rotating file handler (10MB max, 3 backups)
         log_file = self.log_dir / f"{name}.log"
         file_handler = RotatingFileHandler(
             log_file,
@@ -46,7 +43,6 @@ class LogService:
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
-        # Add console handler for terminal output
         if self.console_output:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(formatter)
@@ -69,7 +65,6 @@ class LogService:
 
     def warning(self, message: str, **kwargs):
         """Log warning message"""
-        # Use error logger for warnings since we don't have a separate warning logger
         self.error_logger.warning(message, extra=kwargs)
 
     def get_logs(
@@ -97,5 +92,4 @@ class LogService:
         return self.log_dir / f"{log_type}.log"
 
 
-# Global log service instance
 log_service = LogService()
