@@ -31,6 +31,13 @@ echo "Installing dependencies from requirements.txt..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
+# TorrServer plays magnet links; setup still succeeds without it
+echo "Installing TorrServer for torrent playback..."
+if ! python scripts/install_torrserver.py; then
+    echo "TorrServer install failed. Torrent playback won't work until you run:"
+    echo "  python scripts/install_torrserver.py"
+fi
+
 echo ""
 echo "Setup complete!"
 echo "-------------------------------------------------------"
