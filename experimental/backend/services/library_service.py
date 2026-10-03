@@ -1,11 +1,11 @@
 """Library management service"""
 
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.media_item import MediaItem, MediaType
+from ..models.media_item import MediaItem
 from ..models.media_external_id import MediaExternalId
 from .log_service import log_service
 from .metadata_service import metadata_service
@@ -21,79 +21,6 @@ class LibraryService:
         self.tmdb = tmdb
         self.settings = settings
 
-    async def is_in_library(self, tmdb_id: int, media_type: str) -> Optional[str]:
-        """Check if item is already in library and return media_uuid if exists"""
-        result = await self.db.execute(
-            select(MediaExternalId.media_uuid)
-            .where(
-                MediaExternalId.provider == "tmdb",
-                MediaExternalId.external_id == str(tmdb_id)
-            )
-        )
-        mapping = result.scalar_one_or_none()
-        if not mapping:
-            return None
-            
-        # Verify it's persisted
-        result = await self.db.execute(
-            select(MediaItem.uuid).where(
-                MediaItem.uuid == mapping,
-                MediaItem.is_persisted == True
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def get_or_fetch_imdb_id(
-        self, tmdb_id: int, media_type: str
-    ) -> Optional[str]:
-        """
-        Get IMDB ID from MediaExternalId or fetch from TMDB
-        """
-        result = await self.db.execute(
-            select(MediaExternalId.external_id)
-            .join(MediaExternalId, MediaExternalId.media_uuid == MediaExternalId.media_uuid) # This is dummy join for now
-            .where(
-                MediaExternalId.provider == "imdb",
-                MediaExternalId.media_uuid.in_(
-                    select(MediaExternalId.media_uuid).where(
-                        MediaExternalId.provider == "tmdb",
-                        MediaExternalId.external_id == str(tmdb_id)
-                    )
-                )
-            )
-        )
-        imdb_id = result.scalar_one_or_none()
-        if imdb_id:
-            return imdb_id
-
-        details = await self.tmdb.get_details(tmdb_id, media_type)
-        imdb_id = details.get("external_ids", {}).get("imdb_id") if details else None
-        
-        # If we have a MediaItem for this TMDB ID, save the IMDB ID
-        tmdb_mapping_result = await self.db.execute(
-            select(MediaExternalId.media_uuid).where(
-                MediaExternalId.provider == "tmdb",
-                MediaExternalId.external_id == str(tmdb_id)
-            )
-        )
-        media_uuid = tmdb_mapping_result.scalar_one_or_none()
-        
-        if media_uuid and imdb_id:
-            # Check if this provider/id pair already exists
-            stmt = select(MediaExternalId).where(
-                MediaExternalId.provider == "imdb",
-                MediaExternalId.external_id == imdb_id
-            )
-            existing = await self.db.execute(stmt)
-            if not existing.scalar_one_or_none():
-                self.db.add(MediaExternalId(
-                    media_uuid=media_uuid,
-                    provider="imdb",
-                    external_id=imdb_id
-                ))
-                await self.db.commit()
-
-        return imdb_id
 
     async def remove_from_library(self, identifier: str, media_type: Optional[str] = None):
         """Remove item from library by UUID or provider:id"""

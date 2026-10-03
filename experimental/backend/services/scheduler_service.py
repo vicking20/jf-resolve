@@ -7,11 +7,10 @@ from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import AsyncSessionLocal
 from ..models.media import LibraryScanJob
-from ..models.media_item import MediaItem, MediaType
+from ..models.media_item import MediaItem
 from ..models.media_external_id import MediaExternalId
 from .library_service import LibraryService
 from .log_service import log_service

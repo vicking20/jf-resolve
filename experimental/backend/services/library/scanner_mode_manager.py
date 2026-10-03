@@ -67,22 +67,6 @@ class ScannerModeManager:
             raise ValueError(f"Invalid scanner mode: {mode}")
         await self.settings.set("library_scanner_mode", mode)
 
-    def should_persist_to_db(self, mode: ScannerMode, media_type: str) -> bool:
-        """
-        Determine if scanned items should be persisted to database.
-
-        Args:
-            mode: The effective scanner mode
-            media_type: "movie", "tv", "video", or "video_series"
-
-        Returns:
-            True if items should be persisted to DB
-        """
-        if mode == "active":
-            return True
-
-        # Lazy mode: only persist video/video_series
-        return media_type in ["video", "video_series"]
 
     def should_watch_path(self, mode: ScannerMode, media_type: str) -> bool:
         """
@@ -101,22 +85,6 @@ class ScannerModeManager:
         # Lazy mode: only watch video/video_series paths
         return media_type in ["video", "video_series"]
 
-    def should_schedule_scans(self, mode: ScannerMode, media_type: str) -> bool:
-        """
-        Determine if path should have scheduled scans.
-
-        Args:
-            mode: The effective scanner mode
-            media_type: "movie", "tv", "video", or "video_series"
-
-        Returns:
-            True if scheduled scans should be enabled
-        """
-        if mode == "active":
-            return True
-
-        # Lazy mode: only schedule scans for video/video_series
-        return media_type in ["video", "video_series"]
 
     async def get_mode_description(self, mode: ScannerMode) -> str:
         """Get human-readable description of scanner mode"""

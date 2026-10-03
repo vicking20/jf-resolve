@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from cachetools import TTLCache
 

@@ -12,8 +12,6 @@ from ..core.dependencies import get_current_admin_user
 from ..database import get_db
 from ..models.library_path import LibraryPath
 from ..models.media import LibraryScanJob
-from ..models.media_external_id import MediaExternalId
-from ..models.media_item import MediaItem, MediaType
 from ..models.user import User
 
 router = APIRouter(prefix="/api/library/scan", tags=["library-scanner"])
@@ -25,27 +23,6 @@ class ScanRequest(BaseModel):
 
     path_id: Optional[int] = None  # null = scan all paths
     force_rescan: bool = False  # Re-scan even if recently scanned (for mass updates)
-
-
-class ScanJobResponse(BaseModel):
-    """Scan job status"""
-
-    id: int
-    library_path_id: Optional[int]
-    status: str
-    total_files: int
-    processed_files: int
-    matched_files: int
-    failed_files: int
-    new_media_added: int
-    existing_media_updated: int
-    progress_percentage: float
-    error_message: Optional[str] = None
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("/")

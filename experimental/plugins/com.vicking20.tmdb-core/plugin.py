@@ -1,14 +1,8 @@
 import logging
 import time
-from typing import List, Optional
+from typing import List
 
-from backend.addons.interfaces import (
-    BasePlugin,
-    CatalogueDefinition,
-    CatalogueItem,
-    CatalogueProvider,
-    PluginManifest,
-)
+from backend.addons.interfaces import BasePlugin, CatalogueDefinition, CatalogueItem, CatalogueProvider
 from backend.database import AsyncSessionLocal
 
 # Import internal services

@@ -1,16 +1,16 @@
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import and_, desc, or_, select
+from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.session import get_current_user
 from ..database import get_db
 from ..models.playback import PlaybackSession, SkipSegment
 from ..models.user import User
-from ..models.media_item import MediaItem, MediaType
+from ..models.media_item import MediaItem
 from .media_unified import get_media_resolver
 from ..services.media_resolver import MediaResolver
 from ..services.settings_manager import SettingsManager
@@ -58,35 +58,6 @@ class SkipSegmentResponse(BaseModel):
         from_attributes = True
 
 
-class ContinueWatchingResponse(BaseModel):
-    """Continue watching list response"""
-
-    items: List[dict]
-    total: int
-
-
-class PlaybackProgressResponse(BaseModel):
-    """Playback progress response"""
-
-    id: int
-    tmdb_id: Optional[int] = None
-    video_uuid: Optional[str] = None
-    media_type: str
-    position_seconds: int
-    duration_seconds: Optional[int]
-    progress_percentage: float
-    season: Optional[int]
-    episode: Optional[int]
-    completed: bool
-    last_watched: Optional[str]
-
-    # Include media info for continue watching
-    media: Optional[dict] = None
-
-    class Config:
-        from_attributes = True
-
-
 async def _get_media_info(
     db: AsyncSession,
     media_uuid: str,
@@ -103,11 +74,6 @@ async def _get_media_info(
     if item:
         return item.to_dict()
     return None
-
-
-def _is_user_content(media_type: str) -> bool:
-    """Check if media type is user content"""
-    return media_type in ("video", "video_series")
 
 
 @router.post("/update")
@@ -222,7 +188,6 @@ async def get_playback_progress(
     from ..services.media_resolver import MediaResolver
     from ..services.settings_manager import SettingsManager
     from ..services.tmdb_service import TMDBService
-    import os
 
     settings_mgr = SettingsManager(db)
     api_key = await settings_mgr.get("tmdb_api_key")
@@ -307,7 +272,6 @@ async def get_all_playback_progress(
     from ..services.media_resolver import MediaResolver
     from ..services.settings_manager import SettingsManager
     from ..services.tmdb_service import TMDBService
-    import os
 
     settings_mgr = SettingsManager(db)
     api_key = await settings_mgr.get("tmdb_api_key")
@@ -375,7 +339,6 @@ async def mark_completed(
     from ..services.media_resolver import MediaResolver
     from ..services.settings_manager import SettingsManager
     from ..services.tmdb_service import TMDBService
-    import os
 
     settings_mgr = SettingsManager(db)
     api_key = await settings_mgr.get("tmdb_api_key")

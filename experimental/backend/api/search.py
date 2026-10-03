@@ -12,7 +12,6 @@ from ..database import get_db
 from ..models.user import User
 from ..models.user_profile import ContentRating
 from ..schemas.search import MediaItem, SearchResult
-from ..services.library_service import LibraryService
 from ..services.settings_manager import SettingsManager
 from ..services.tmdb_service import TMDBService
 from ..utils.content_rating import (
@@ -126,7 +125,6 @@ async def search_multi(
         max_rating, enabled, _ = content_filter
 
         # Search persisted media items
-        from sqlalchemy import and_
         from sqlalchemy.orm import selectinload
 
         media_stmt = (

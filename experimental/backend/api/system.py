@@ -1,8 +1,6 @@
 """System API routes (health, logs, tasks)"""
 
 from datetime import datetime
-from pathlib import Path
-from typing import Dict
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,14 +8,11 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import settings as app_settings
 from ..core.dependencies import get_current_admin_user, get_current_user
 from ..database import get_db
 from ..models.user import User
-from ..services.library_service import LibraryService
 from ..services.log_service import log_service
 from ..services.metadata_service import metadata_service
-from ..services.populate_service import PopulateService
 from ..services.settings_manager import SettingsManager
 from ..services.tmdb_service import TMDBService
 
@@ -246,7 +241,7 @@ async def export_library(
     current_user: User = Depends(get_current_admin_user),
 ):
     """Export library as JSON"""
-    from ..models.media_item import MediaItem, MediaType
+    from ..models.media_item import MediaItem
 
     export_data = []
 

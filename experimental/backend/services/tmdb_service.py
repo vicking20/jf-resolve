@@ -1,7 +1,7 @@
 """TMDB API service"""
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import httpx
 

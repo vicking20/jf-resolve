@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 import httpx
 from fastapi import HTTPException
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .log_service import log_service
 
@@ -319,17 +319,6 @@ class StreamService:
             headers["Range"] = range_header
 
         try:
-            # We use a custom generator to stream the response
-            async def stream_generator():
-                async with self.client.stream("GET", url, headers=headers) as response:
-                    if response.status_code >= 400:
-                        raise HTTPException(
-                            status_code=response.status_code,
-                            detail="Remote stream error",
-                        )
-
-                    async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):
-                        yield chunk
 
             # We need to get the headers from the remote first to pass them to StreamingResponse
             # But we don't want to make two requests.

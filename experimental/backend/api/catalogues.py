@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import desc, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.dependencies import get_current_admin_user
@@ -19,12 +19,6 @@ router = APIRouter(prefix="/api/catalogues", tags=["catalogues"])
 class CatalogueCreate(BaseModel):
     name: str
     slug: str
-    description: Optional[str] = None
-    order_config: Optional[Dict[str, Any]] = None
-
-
-class CatalogueUpdate(BaseModel):
-    name: Optional[str] = None
     description: Optional[str] = None
     order_config: Optional[Dict[str, Any]] = None
 

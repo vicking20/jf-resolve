@@ -3,18 +3,13 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +35,8 @@ from .api import (
 )
 from .api import settings as settings_api
 from .config import settings
-from .core.dependencies import get_admin_user_page, get_current_admin_user
-from .core.session import get_current_user, get_current_user_optional
+from .core.dependencies import get_current_admin_user
 from .database import AsyncSessionLocal, engine, get_db, init_db
-from .models.media_external_id import MediaExternalId
-from .models.media_item import MediaItem, MediaType
 from .models.user import User
 from .services.scheduler_service import scheduler_service
 from .services.settings_manager import SettingsManager

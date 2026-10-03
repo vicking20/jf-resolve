@@ -2,7 +2,6 @@
 
 import hashlib
 import hmac
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, Response, status
 from itsdangerous import BadData, URLSafeTimedSerializer

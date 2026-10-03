@@ -1,18 +1,16 @@
 """Library management API routes"""
 
-from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select, union_all
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.dependencies import get_current_admin_user, get_current_user
 from ..database import get_db
 from ..models.media_item import MediaItem, MediaType
 from ..models.user import User
-from ..models.media_external_id import MediaExternalId
 from .media_unified import get_media_resolver
 from ..services.media_resolver import MediaResolver
 from ..services.library_service import LibraryService

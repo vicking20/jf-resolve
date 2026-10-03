@@ -1,16 +1,16 @@
 """Watchlist API endpoints"""
 
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import and_, desc, select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..core.session import get_current_user
 from ..database import get_db
-from ..models.media_item import MediaItem, MediaType
+from ..models.media_item import MediaItem
 from ..models.user import User
 from ..models.watchlist import WatchlistItem
 from ..services.media_resolver import MediaResolver
@@ -32,23 +32,6 @@ class WatchlistAdd(BaseModel):
     year: Optional[int] = None
     poster_path: Optional[str] = None
     overview: Optional[str] = None
-
-
-class WatchlistResponse(BaseModel):
-    """Watchlist item response"""
-
-    media_uuid: str
-    media_type: str
-    title: str
-    poster_path: Optional[str] = None
-    year: Optional[int] = None
-    overview: Optional[str] = None
-    tmdb_id: Optional[int] = None
-    vote_average: Optional[float] = None
-    added_at: str
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("/")

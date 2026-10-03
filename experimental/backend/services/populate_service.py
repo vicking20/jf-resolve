@@ -1,6 +1,6 @@
 """Service for updating series and library items"""
 
-from typing import Dict, List
+from typing import Dict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

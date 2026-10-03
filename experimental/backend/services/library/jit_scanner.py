@@ -2,11 +2,9 @@
 
 import asyncio
 import os
-from functools import lru_cache
 from typing import Dict, List, Optional
 
 from ...models.library_path import LibraryPath
-from ..log_service import log_service
 from ..tmdb_service import TMDBService
 from .base_scanner import BaseScanner
 
@@ -32,129 +30,6 @@ class JITScanner:
         self._cache = {}
         self._cache_timestamps = {}
 
-    async def scan_path_jit(
-        self,
-        library_path: LibraryPath,
-        page: int = 1,
-        limit: int = 50,
-        sort_by: str = "title",
-    ) -> Dict:
-        """
-        Scan a library path and return results without persisting.
-
-        Used for browsing in lazy mode.
-
-        Args:
-            library_path: The path to scan
-            page: Page number (1-indexed)
-            limit: Items per page
-            sort_by: Sort field ("title", "year", "added")
-
-        Returns:
-            {
-                "items": [...],  # Transient MediaItem dicts
-                "total": 150,
-                "page": 1,
-                "limit": 50,
-                "has_more": True,
-                "scan_mode": "jit"
-            }
-        """
-        log_service.info(
-            f"JIT scan of {library_path.path} (page {page}, limit {limit})"
-        )
-
-        # Get all video files (with caching)
-        cache_key = f"files_{library_path.id}"
-        video_files = self._cache.get(cache_key)
-
-        if not video_files:
-            video_files = await self.base.find_video_files_async(library_path.path)
-            self._cache[cache_key] = video_files
-            log_service.info(f"Found {len(video_files)} video files")
-
-        # Extract metadata for all files
-        items_metadata = []
-        for file_path in video_files:
-            filename = os.path.basename(file_path)
-            metadata = self.base.extract_metadata_from_filename(
-                filename, library_path.media_type
-            )
-            metadata["file_path"] = file_path
-            items_metadata.append(metadata)
-
-        # Sort
-        if sort_by == "title":
-            items_metadata.sort(key=lambda x: x.get("title", "").lower())
-        elif sort_by == "year":
-            items_metadata.sort(key=lambda x: x.get("year", 0) or 0, reverse=True)
-        elif sort_by == "added":
-            # Sort by file path (approximation of added order)
-            pass
-
-        # Paginate
-        total = len(items_metadata)
-        start = (page - 1) * limit
-        end = start + limit
-        page_items = items_metadata[start:end]
-
-        # Enrich with TMDB data (parallel, cached)
-        enriched = await self._enrich_with_tmdb(page_items, library_path.media_type)
-
-        return {
-            "items": enriched,
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "has_more": end < total,
-            "scan_mode": "jit",
-        }
-
-    async def get_item_details_jit(
-        self,
-        file_path: str,
-        media_type: str,
-    ) -> Optional[Dict]:
-        """
-        Get full details for a single item.
-
-        Matches with TMDB and returns full metadata.
-        Still transient - no DB write.
-
-        Args:
-            file_path: Path to the video file
-            media_type: "movie" or "tv"
-
-        Returns:
-            Full metadata dict with TMDB data
-        """
-        filename = os.path.basename(file_path)
-        metadata = self.base.extract_metadata_from_filename(filename, media_type)
-
-        # Try TMDB matching
-        if self.tmdb and metadata.get("title"):
-            tmdb_data = await self.base.match_with_tmdb(
-                title=metadata["title"],
-                year=metadata.get("year"),
-                media_type=media_type,
-            )
-
-            if tmdb_data:
-                # Parse and return full details
-                parsed = self.tmdb.parse_media_item(tmdb_data, media_type)
-                # Add file path for playback
-                parsed["file_path"] = file_path
-                parsed["source_type"] = self.base.get_source_type(file_path)
-                return parsed
-
-        # Fallback: return basic metadata
-        return {
-            "title": metadata.get("title", "Unknown"),
-            "year": metadata.get("year"),
-            "media_type": media_type,
-            "file_path": file_path,
-            "source_type": self.base.get_source_type(file_path),
-        }
 
     async def search_jit(
         self,

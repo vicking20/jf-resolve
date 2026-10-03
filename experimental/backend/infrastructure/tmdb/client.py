@@ -1,10 +1,10 @@
 """TMDB API client - wraps existing TMDBService with new architecture"""
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import httpx
 
-from ...core.exceptions import IMDBIdNotFoundError, TMDBError
+from ...core.exceptions import TMDBError
 from ...core.logging import get_logger
 from ...core.logging import get_logger
 from ...utils.content_rating import get_us_movie_certification, get_us_tv_rating

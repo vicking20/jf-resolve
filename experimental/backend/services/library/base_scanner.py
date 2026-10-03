@@ -1,10 +1,8 @@
 """Base scanner utilities - shared by both Active and JIT scanners"""
 
 import asyncio
-import json
 import os
 import re
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from ..tmdb_service import TMDBService
@@ -252,79 +250,6 @@ class BaseScanner:
         except OSError:
             return {}
 
-    async def run_ffprobe(self, file_path: str) -> Optional[Dict]:
-        """
-        Run FFprobe to extract video metadata
-
-        Returns: duration, resolution, codec, bitrate
-        """
-        try:
-            cmd = [
-                "ffprobe",
-                "-v",
-                "quiet",
-                "-print_format",
-                "json",
-                "-show_format",
-                "-show_streams",
-                file_path,
-            ]
-
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-
-            stdout, stderr = await result.communicate()
-
-            if result.returncode != 0:
-                return None
-
-            data = json.loads(stdout)
-
-            # Extract video stream
-            video_stream = next(
-                (s for s in data.get("streams", []) if s.get("codec_type") == "video"),
-                None,
-            )
-
-            if not video_stream:
-                return None
-
-            # Parse data
-            info = {}
-
-            # Duration (seconds)
-            if "duration" in data.get("format", {}):
-                info["duration"] = int(float(data["format"]["duration"]))
-
-            # Resolution
-            height = video_stream.get("height")
-            if height:
-                if height >= 2160:
-                    info["resolution"] = "4K"
-                elif height >= 1080:
-                    info["resolution"] = "1080p"
-                elif height >= 720:
-                    info["resolution"] = "720p"
-                elif height >= 480:
-                    info["resolution"] = "480p"
-                else:
-                    info["resolution"] = f"{height}p"
-
-            # Codec
-            if "codec_name" in video_stream:
-                info["codec"] = video_stream["codec_name"]
-
-            # Bitrate (kbps)
-            if "bit_rate" in data.get("format", {}):
-                info["bitrate"] = int(data["format"]["bit_rate"]) // 1000
-
-            return info
-
-        except Exception:
-            return None
 
     def find_local_images(self, directory: str) -> Dict[str, str]:
         """

@@ -223,15 +223,6 @@ class PluginManager:
             f'Loaded plugin: {plugin_id} ("{display_name}") v{manifest.get("version", "0.0.0")}'
         )
 
-    async def get_all_catalogues(self) -> List[dict]:
-        """Get catalogues from all providers (errors are handled automatically)"""
-        catalogues = []
-        for provider in self.catalogue_providers:
-            # SafePluginWrapper will catch any errors
-            provider_catalogues = await provider.get_catalogues()
-            if provider_catalogues:  # Skip if error returned []
-                catalogues.extend(provider_catalogues)
-        return catalogues
 
     async def get_catalogue_items(self, catalogue_id: str, page: int = 1) -> List[dict]:
         """Get items from a specific catalogue (errors handled automatically)"""

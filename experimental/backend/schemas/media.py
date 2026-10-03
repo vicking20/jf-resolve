@@ -6,22 +6,6 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class MediaSourceResponse(BaseModel):
-    """Media source response"""
-
-    id: int
-    source_type: str
-    file_path: Optional[str] = None
-    stream_url: Optional[str] = None
-    file_size: Optional[int] = None
-    resolution: Optional[str] = None
-    quality: Optional[str] = None
-    is_available: bool
-
-    class Config:
-        from_attributes = True
-
-
 class MediaResponse(BaseModel):
     """Media response"""
 
@@ -52,12 +36,6 @@ class MediaResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class MediaWithSourcesResponse(MediaResponse):
-    """Media with sources"""
-
-    sources: List[MediaSourceResponse] = []
 
 
 class MediaCreate(BaseModel):

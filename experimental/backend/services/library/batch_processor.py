@@ -203,35 +203,3 @@ class BatchProcessor:
         async with self.tmdb_limiter:
             return await coro
 
-    def get_adaptive_settings(self, file_count: int, has_tmdb: bool) -> dict:
-        """
-        Get adaptive batch processor settings based on library size.
-
-        Args:
-            file_count: Total number of files
-            has_tmdb: Whether TMDB matching is needed
-
-        Returns:
-            Dict with recommended settings
-        """
-        if file_count < 100:
-            # Small library - process quickly
-            return {
-                "max_concurrent": 10,
-                "batch_size": 50,
-                "delay_between_batches": 0.1,
-            }
-        elif file_count < 1000:
-            # Medium library
-            return {
-                "max_concurrent": 8 if has_tmdb else 15,
-                "batch_size": 50,
-                "delay_between_batches": 0.3,
-            }
-        else:
-            # Large library - more conservative
-            return {
-                "max_concurrent": 5 if has_tmdb else 20,
-                "batch_size": 100,
-                "delay_between_batches": 0.5,
-            }

@@ -1,17 +1,14 @@
 """FastAPI dependency injection for clean route handlers"""
 
-from typing import Optional
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.user import User
 from .config import settings
 from .database import get_db
-from .exceptions import AuthenticationError
 from .logging import get_logger
-from .security import verify_addon_token
-from .session import get_current_user, get_current_user_optional
+from .session import get_current_user
 
 logger = get_logger(__name__)
 
@@ -63,31 +60,6 @@ async def get_admin_user_page(
 # ===== Addon Dependencies =====
 
 
-async def get_current_addon(
-    addon_token: str = Header(..., alias="X-Addon-Token"),
-) -> str:
-    """
-    Get current addon ID from header
-
-    Args:
-        addon_token: Addon authentication token
-
-    Returns:
-        Addon ID
-
-    Raises:
-        HTTPException: If addon authentication fails
-    """
-    try:
-        addon_id = verify_addon_token(addon_token)
-        return addon_id
-    except AuthenticationError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Addon authentication failed: {str(e)}",
-        )
-
-
 # ===== Service Dependencies =====
 
 
@@ -118,56 +90,7 @@ async def get_tmdb_service(db: AsyncSession = Depends(get_db)):
     return TMDBClient(api_key)
 
 
-
-
-async def get_library_service(db: AsyncSession = Depends(get_db)):
-    """
-    Get Library service instance with all dependencies
-
-    Args:
-        db: Database session
-
-    Returns:
-        LibraryService instance
-    """
-    from ..services.library_service import LibraryService
-    from ..services.settings_manager import SettingsManager
-
-    settings = SettingsManager(db)
-    await settings.load_cache()
-    tmdb = await get_tmdb_service(db)
-
-    return LibraryService(db, tmdb, settings)
-
-
 # ===== Configuration Dependencies =====
-
-
-def get_settings():
-    """
-    Get application settings
-
-    Returns:
-        AppConfig instance
-    """
-    return settings
-
-
-async def get_settings_service(db: AsyncSession = Depends(get_db)):
-    """
-    Get settings service for user-configurable settings
-
-    Args:
-        db: Database session
-
-    Returns:
-        SettingsManager instance
-    """
-    from ..services.settings_manager import SettingsManager
-
-    service = SettingsManager(db)
-    await service.load_cache()
-    return service
 
 
 # ===== Content Rating Dependencies =====
@@ -225,31 +148,3 @@ async def get_user_content_filter(
 # ===== Pagination Dependencies =====
 
 
-async def get_pagination(
-    page: int = 1,
-    limit: int = 20,
-):
-    """
-    Get pagination parameters
-
-    Args:
-        page: Page number (1-indexed)
-        limit: Items per page
-
-    Returns:
-        Tuple of (offset, limit)
-    """
-    if page < 1:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Page must be >= 1",
-        )
-
-    if limit < 1 or limit > 100:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Limit must be between 1 and 100",
-        )
-
-    offset = (page - 1) * limit
-    return offset, limit

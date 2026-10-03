@@ -12,7 +12,7 @@ from ..settings_manager import SettingsManager
 from ..tmdb_service import TMDBService
 from .active_scanner import ActiveScanner
 from .batch_processor import BatchProcessor
-from .file_watcher import LibraryFileWatcher, get_file_watcher
+from .file_watcher import get_file_watcher
 from .jit_scanner import JITScanner
 from .scanner_mode_manager import ScannerModeManager
 
@@ -100,53 +100,6 @@ class ScannerCoordinator:
                 "message": "JIT scanning enabled - browse library to see items",
             }
 
-    async def browse_library(
-        self,
-        library_path: LibraryPath,
-        page: int = 1,
-        limit: int = 50,
-        sort_by: str = "title",
-    ) -> Dict:
-        """
-        Browse library contents with mode-aware behavior.
-
-        Args:
-            library_path: The path to browse
-            page: Page number
-            limit: Items per page
-            sort_by: Sort field
-
-        Returns:
-            Dict with items and pagination info
-        """
-        mode = await self.mode_manager.get_effective_mode(library_path)
-
-        if mode == "lazy" and library_path.media_type in ["movie", "tv"]:
-            # JIT scanning for movies/TV in lazy mode
-            return await self.jit_scanner.scan_path_jit(
-                library_path, page, limit, sort_by
-            )
-        else:
-            # Query from database for active mode or video paths
-            from ..library_service import LibraryService
-
-            library_service = LibraryService(
-                self.db, self.tmdb, SettingsManager(self.db)
-            )
-
-            # Get items from DB
-            items = await library_service.get_items_by_library_path(
-                library_path.id, page, limit
-            )
-
-            return {
-                "items": items.get("items", []),
-                "total": items.get("total", 0),
-                "page": page,
-                "limit": limit,
-                "has_more": items.get("has_more", False),
-                "scan_mode": "active",
-            }
 
     async def search_library(
         self,
@@ -252,7 +205,6 @@ class ScannerCoordinator:
 
         # Get recent scan jobs for status
         from ...models.media import LibraryScanJob
-        from datetime import datetime, timedelta
         
         scan_jobs_result = await self.db.execute(
             select(LibraryScanJob)
@@ -280,18 +232,6 @@ class ScannerCoordinator:
             "recent_scans": recent_scans,
         }
 
-    async def clear_jit_cache(self, library_path_id: Optional[int] = None):
-        """
-        Clear JIT scanner cache.
-
-        Args:
-            library_path_id: If provided, clear only this path's cache
-        """
-        self.jit_scanner.clear_cache(library_path_id)
-        log_service.info(
-            f"JIT cache cleared"
-            + (f" for path {library_path_id}" if library_path_id else "")
-        )
 
     async def trigger_initial_scans_if_needed(self):
         """

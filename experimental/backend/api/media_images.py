@@ -1,13 +1,11 @@
 """Media images proxy API"""
 
-import os
 import re
 from pathlib import Path
 from typing import Optional
 
 from ..config import settings as app_settings
 
-import aiofiles
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -17,11 +15,8 @@ from sqlalchemy.orm import selectinload
 
 from ..core.session import get_current_user
 from ..database import get_db
-from ..models.media import MediaType as MediaTypeEnum
 from ..models.media_item import MediaItem
 from ..services.metadata_service import MetadataService
-from ..services.settings_manager import SettingsManager
-from ..services.tmdb_service import TMDBService
 
 router = APIRouter(
     prefix="/api/media/images",

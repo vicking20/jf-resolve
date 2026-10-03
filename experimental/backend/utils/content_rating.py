@@ -72,32 +72,6 @@ def get_us_tv_rating(tmdb_data: Dict) -> Optional[str]:
     return None
 
 
-def map_certification_to_content_rating(
-    certification: Optional[str], media_type: str
-) -> Optional[str]:
-    """
-    Map TMDB certification to our content rating string
-
-    Args:
-        certification: TMDB certification (e.g., "PG-13", "TV-14")
-        media_type: "movie" or "tv"
-
-    Returns:
-        Content rating string or None
-    """
-    if not certification:
-        return None
-
-    if media_type == "movie":
-        rating_enum = MOVIE_RATING_MAP.get(certification)
-    else:  # tv
-        rating_enum = TV_RATING_MAP.get(certification)
-
-    # Return the original certification string for storage
-    # We'll use it for both display and filtering
-    return certification if rating_enum else None
-
-
 def get_content_rating_level(content_rating: Optional[str], media_type: str) -> int:
     """
     Get numeric level for content rating to enable filtering

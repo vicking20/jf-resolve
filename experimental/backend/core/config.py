@@ -4,7 +4,6 @@ import os
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -225,10 +224,6 @@ class AppConfig(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production mode"""
         return os.getenv("ENVIRONMENT", "development").lower() == "production"
-
-    def is_development(self) -> bool:
-        """Check if running in development mode"""
-        return not self.is_production()
 
 
 # Global config instance

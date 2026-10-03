@@ -308,9 +308,6 @@ class LibraryFileWatcher:
         except Exception as e:
             log_service.error(f"Error handling file change {file_path}: {e}")
 
-    def is_watching(self, library_path_id: int) -> bool:
-        """Check if a library path is currently being watched"""
-        return library_path_id in self.handlers
 
     def get_watched_paths(self) -> list:
         """Get list of currently watched library path IDs"""

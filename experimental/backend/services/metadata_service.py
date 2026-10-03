@@ -1,14 +1,11 @@
 """Metadata management service - NFO files and image caching"""
 
 import asyncio
-import json
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
-import aiofiles
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -90,34 +87,6 @@ class MetadataService:
         except Exception:
             return False
 
-    def get_cached_image(
-        self, media_type: str, tmdb_id: int, image_type: str
-    ) -> Optional[Path]:
-        """Get path to cached image if it exists"""
-        media_dir = self.get_media_dir(media_type, tmdb_id)
-
-        if image_type == "poster":
-            image_path = media_dir / "poster.jpg"
-        elif image_type == "backdrop":
-            image_path = media_dir / "backdrop.jpg"
-        else:
-            return None
-
-        return image_path if image_path.exists() else None
-
-    def delete_media_cache(self, media_type: str, tmdb_id: int):
-        """Delete all cached files for a specific media item"""
-        try:
-            import shutil
-
-            media_dir = self.get_media_dir(media_type, tmdb_id)
-            if media_dir.exists():
-                shutil.rmtree(media_dir)
-                logger.info(f"Deleted cache for {media_type}:{tmdb_id}")
-                return True
-        except Exception as e:
-            logger.error(f"Failed to delete cache for {media_type}:{tmdb_id}: {e}")
-        return False
 
     async def clear_expired_cache(self, max_age_days: int = 30, protected_ids: Optional[set] = None):
         """Clear expired cache entries, avoiding protected IDs (library items)"""

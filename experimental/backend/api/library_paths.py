@@ -1,6 +1,5 @@
 """Library path management API routes"""
 
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -33,23 +32,6 @@ class LibraryPathUpdate(BaseModel):
     path: str = None
     enabled: bool = None
     scan_interval: int = None
-
-
-class LibraryPathResponse(BaseModel):
-    """Library path response"""
-
-    id: int
-    name: str
-    path: str
-    media_type: str
-    enabled: bool
-    scan_interval: int
-    last_scanned: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 @router.get("/")

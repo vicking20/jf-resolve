@@ -1,13 +1,11 @@
 """Service for managing and syncing media catalogues (Trending, Popular, etc.)"""
 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import AsyncSessionLocal
 from ..models.catalogue import Catalogue, CatalogueItem
 from ..models.media_external_id import MediaExternalId
 from ..models.media_item import MediaItem, MediaType

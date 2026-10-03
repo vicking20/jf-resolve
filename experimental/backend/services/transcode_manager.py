@@ -2,7 +2,6 @@
 
 import asyncio
 import re
-import os
 import signal
 import time
 from asyncio import Semaphore
@@ -214,11 +213,6 @@ class TranscodeManager:
             for stream_id, info in self.active_transcodes.items()
         }
 
-    def is_slot_available(self) -> bool:
-        """Check if transcode slot is currently available"""
-        if self.max_concurrent == 0:
-            return True
-        return self.get_active_count() < self.max_concurrent
 
     def touch_stream(self, stream_id: str) -> bool:
         info = self.active_transcodes.get(stream_id)

@@ -1,7 +1,6 @@
 """Cleanup service - handles removal of files and orphaned media items"""
 
-from datetime import datetime, timezone
-from typing import List, Set
+from typing import Set
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -160,44 +159,4 @@ class CleanupService:
                 await self.db.delete(parent)
                 await self.db.commit()
 
-    async def mark_files_verified(self, file_paths: List[str]):
-        """
-        Update last_verified timestamp for files that still exist.
 
-        Used during scans to track file availability.
-        """
-        if not file_paths:
-            return
-
-        for file_path in file_paths:
-            result = await self.db.execute(
-                select(MediaSourceModel).where(MediaSourceModel.file_path == file_path)
-            )
-            source = result.scalar_one_or_none()
-
-            if source:
-                source.last_verified = datetime.now(timezone.utc)
-                source.is_available = True
-
-        await self.db.commit()
-
-    async def get_unverified_sources(
-        self, library_path_id: int, days: int = 30
-    ) -> List[MediaSourceModel]:
-        """
-        Get sources that haven't been verified in X days.
-
-        Useful for detecting stale/missing files.
-        """
-        from datetime import timedelta
-
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-
-        result = await self.db.execute(
-            select(MediaSourceModel).where(
-                MediaSourceModel.library_path_id == library_path_id,
-                MediaSourceModel.last_verified < cutoff,
-            )
-        )
-
-        return result.scalars().all()
