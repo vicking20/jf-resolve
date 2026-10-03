@@ -1,0 +1,156 @@
+{% extends "base.html" %} {% block title %}Plugin Marketplace - JF-Resolve{%
+endblock %} {% block content %}
+
+<div x-data="marketplacePage()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Plugin Marketplace</h1>
+        </div>
+        <div class="flex gap-2">
+            <button @click="showAddRepositoryModal = true" class="btn btn-primary gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Repository
+            </button>
+
+        </div>
+    </div>
+
+    <div class="mb-6">
+        <input type="text" x-model="searchQuery" @input="filterPlugins()" placeholder="Search plugins..."
+            class="input input-bordered w-full max-w-md" />
+    </div>
+
+    <div x-show="repositories.length > 0">
+        <template x-for="repo in repositories" :key="repo.url">
+            <div class="mb-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <h2 class="text-xl font-bold" x-text="repo.name"></h2>
+                    <span x-show="repo.is_official" class="badge badge-primary badge-sm">Official</span>
+                    <span x-show="!repo.is_official" class="badge badge-secondary badge-sm">Third-party</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="plugin in filteredPlugins.filter(p => p.repository.url === repo.url)"
+                        :key="plugin.id">
+                        <div class="card jfr-panel">
+                            <div class="card-body">
+                                <div class="flex items-start justify-between">
+                                    <h3 class="card-title text-lg" x-text="plugin.name"></h3>
+                                    <div class="flex gap-1">
+                                        <span x-show="plugin.installed_version"
+                                            class="badge badge-success badge-sm">Installed</span>
+                                        <span x-show="plugin.update_available"
+                                            class="badge badge-warning badge-sm">Update</span>
+                                    </div>
+                                </div>
+
+                                <p class="text-sm opacity-70" x-text="plugin.description"></p>
+
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    <template x-for="tag in plugin.tags" :key="tag">
+                                        <span class="badge badge-outline badge-sm" x-text="tag"></span>
+                                    </template>
+                                </div>
+
+                                <div class="text-xs opacity-60 mt-2 space-y-1">
+                                    <div x-show="plugin.author">
+                                        <span class="font-semibold">Author:</span>
+                                        <span x-text="plugin.author"></span>
+                                    </div>
+                                    <div x-show="plugin.version">
+                                        <span class="font-semibold">Version:</span>
+                                        <span x-text="plugin.version"></span>
+                                    </div>
+                                </div>
+
+                                <div x-show="plugin.depends_on && plugin.depends_on.length > 0"
+                                    class="text-xs opacity-60 mt-2">
+                                    <span class="font-semibold">Dependencies:</span>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        <template x-for="dep in plugin.depends_on" :key="dep">
+                                            <span class="badge badge-ghost badge-xs" x-text="dep"></span>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div class="card-actions justify-end mt-4">
+                                    <button x-show="!plugin.installed_version" @click="installPlugin(plugin)"
+                                        :disabled="installing" class="btn btn-primary btn-sm">
+                                        <span x-show="!installing">Install</span>
+                                        <span x-show="installing" class="loading loading-spinner loading-sm"></span>
+                                    </button>
+
+                                    <button x-show="plugin.installed_version && !plugin.update_available"
+                                        @click="uninstallPlugin(plugin)" :disabled="installing"
+                                        class="btn btn-error btn-outline btn-sm">
+                                        <span x-show="!installing">Uninstall</span>
+                                        <span x-show="installing" class="loading loading-spinner loading-sm"></span>
+                                    </button>
+
+                                    <button x-show="plugin.update_available" @click="updatePlugin(plugin)"
+                                        :disabled="installing" class="btn btn-warning btn-sm">
+                                        <span x-show="!installing">Update</span>
+                                        <span x-show="installing" class="loading loading-spinner loading-sm"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="loading" class="text-center py-12">
+        <span class="loading loading-spinner loading-lg"></span>
+        <p class="mt-4">Loading marketplace...</p>
+    </div>
+
+    <div x-show="!loading && repositories.length === 0" class="alert alert-info">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span>No repositories configured. Add a repository to browse plugins.</span>
+    </div>
+
+<div x-cloak class="modal" :class="showAddRepositoryModal ? 'modal-open' : ''" @click.self="showAddRepositoryModal = false">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Add Plugin Repository</h3>
+        <p class="text-sm opacity-70 mt-2">
+            Add a repository URL to browse additional plugins. Repositories
+            should serve a manifest.json with plugin information.
+        </p>
+
+        <div class="form-control mt-4">
+            <label class="label">
+                <span class="label-text">Repository Manifest URL</span>
+            </label>
+            <input type="text" x-model="customManifestUrl"
+                placeholder="https://raw.githubusercontent.com/user/repo/main/manifest.json"
+                class="input input-bordered" />
+            <label class="label">
+                <span class="label-text-alt opacity-70">
+                    Enter the URL of the repository’s JSON manifest.
+                </span>
+            </label>
+        </div>
+
+        <div class="modal-action">
+            <button class="btn btn-ghost" @click="showAddRepositoryModal = false">
+                Cancel
+            </button>
+            <button class="btn btn-primary" @click="addRepository()" :disabled="!customManifestUrl">
+                Add Repository
+            </button>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script src="/static/js/pages/marketplace.js"></script>
+{% endblock %}

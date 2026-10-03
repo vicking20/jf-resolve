@@ -1,26 +1,36 @@
 # Core
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
+fastapi
+uvicorn[standard]
 requests
+slowapi
 
 # Database
-sqlalchemy==2.0.25
 aiosqlite==0.19.0
+asyncpg
+sqlalchemy
 
-# Auth
-python-jose[cryptography]==3.3.0
-passlib==1.7.4
-bcrypt==4.0.1
+# Auth & Security
+python-jose[cryptography]
+passlib
+bcrypt<4.0.0
+argon2-cffi
+itsdangerous
+
 
 # HTTP Client
-httpx==0.26.0
+httpx
 
 # Scheduling
-apscheduler==3.10.4
+apscheduler
 
 # Templates
-jinja2==3.1.3
+jinja2
 
 # Utilities
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic
+pydantic-settings
+greenlet
+cachetools
+aiofiles
+watchdog>=3.0.0
+psutil

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+venv/
+.venv/
+
+# Secrets and local config
+.env
+config.ini
+experimental/plugins/*/config.json
+
+# Runtime data: database, logs, metadata cache, downloads, TorrServer, STRM output
+data/
+experimental/data/
+logs/
+*.log
+*.db
+.run/
+strm/
+
+# Editor, OS and tooling
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Backups
+*.bak

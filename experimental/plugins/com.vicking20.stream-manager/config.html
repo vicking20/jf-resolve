@@ -1,0 +1,29 @@
+<div class="space-y-4">
+    <div class="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm text-blue-200">
+        <p>Configure how jf-resolve interacts with Stremio addons.</p>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-1">Stremio Manifest URL</label>
+        <input type="url" name="manifest_url"
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+            placeholder="https://torrentio.strem.fun/manifest.json">
+        <p class="mt-1 text-xs text-gray-500">The full URL to the Stremio addon manifest.json</p>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <input type="checkbox" name="show_stream_details" id="show_stream_details"
+            class="checkbox checkbox-primary checkbox-sm">
+        <label for="show_stream_details" class="text-sm font-medium text-gray-400">Show Full Stream Details</label>
+    </div>
+    <p class="text-xs text-gray-500 -mt-2 ml-7">If enabled, displays the original multi-line title from the provider.
+    </p>
+
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-1">Max Results</label>
+        <input type="number" name="max_results"
+            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition-colors"
+            min="1" max="50">
+        <p class="mt-1 text-xs text-gray-500">Maximum number of streams to fetch (default: 20)</p>
+    </div>
+</div>

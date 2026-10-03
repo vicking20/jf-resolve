@@ -1,0 +1,10 @@
+{
+  "id": "com.vicking20.tmdb-core",
+  "name": "The Movie Database (Core)",
+  "version": "1.1.0",
+  "description": "Provides default catalogues like Popular, Trending, and Top Rated from TMDB",
+  "author": "Vicking20",
+  "capabilities": [
+    "catalogue"
+  ]
+}

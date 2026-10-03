@@ -1,0 +1,694 @@
+{% extends "base.html" %} {% block title %}{% if media %}{{ media.title }}{%
+else %}Loading...{% endif %} - JF-Resolve{% endblock %}
+
+{% block navbar %}
+<div x-data="{}" x-show="!$store.ui.playerOpen"
+    class="sticky top-0 z-50 py-4 pointer-events-none">
+    <div
+        class="navbar bg-base-100/70 backdrop-blur-md w-[96%] max-w-[1700px] mx-auto rounded-xl shadow-lg border border-white/10 pointer-events-auto">
+        <div class="navbar-start">
+            <a href="/" class="btn btn-ghost normal-case text-xl items-center gap-2">
+                <img src="/static/jfresolve.png" alt="JF-Resolve" class="h-8 w-8" />
+                <span class="hidden sm:inline"><span class="text-primary">JF</span>-Resolve</span>
+            </a>
+        </div>
+        <div class="navbar-center"></div>
+        <div class="navbar-end flex items-center gap-2" x-data="auth" x-init="init()">
+            <a :href="$store.ui.isSearch ? '/' : '/search'" class="btn btn-ghost btn-circle">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    #main-player.transcoded .art-progress,
+    #main-player.transcoded .art-control-time { display: none; }
+    #main-player.transcoded { height: calc(100% - 64px); }
+
+    .glass-panel {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .source-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid transparent;
+    }
+
+    .source-card:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-left-color: hsl(var(--p));
+        transform: translateX(4px);
+    }
+</style>
+
+<script>
+    function handleImageError(img) {
+        img.classList.add("opacity-0");
+    }
+</script>
+<script src="/static/js/pages/media_detail.js?v=10"></script>
+<script src="/static/js/pages/player.js?v=9"></script>
+{% endblock %} {% block content %}
+<div id="media-data" style="display: none">
+    <script type="application/json" id="media-json">
+        {{ media | tojson | safe }}
+    </script>
+    <span id="is-virtual-flag">{% if is_virtual %}true{% else %}false{% endif %}</span>
+</div>
+
+<script>
+    window.__SERVER_MEDIA__ = JSON.parse(
+        document.getElementById("media-json").textContent,
+    );
+    window.__IS_VIRTUAL__ =
+        document.getElementById("is-virtual-flag").textContent.trim() ===
+        "true";
+</script>
+
+<div x-data="mediaDetailPage(window.__SERVER_MEDIA__, window.__IS_VIRTUAL__)" class="relative" x-cloak>
+
+    <template x-if="media && (media.backdrop_path || media.backdrop_url)">
+        <div class="backdrop-container fixed inset-0 z-0 overflow-hidden pointer-events-none">
+            <img :src="getBackdropUrl(media?.backdrop_path || media?.backdrop_url)"
+                class="w-full h-full object-cover opacity-40 transition-opacity duration-300" :alt="media?.title"
+                onerror="handleImageError(this)" />
+            <div class="absolute inset-0 bg-gradient-to-t from-base-300 via-base-300/60 to-transparent"></div>
+            <div class="absolute inset-0 bg-gradient-to-r from-base-300 via-transparent to-base-300/40"></div>
+        </div>
+    </template>
+
+    <div x-show="loading" class="flex justify-center items-center min-h-[60vh]">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+
+    <div x-show="!loading && !media" class="text-center py-24 glass-panel rounded-3xl max-w-lg mx-auto mt-12">
+        <h2 class="text-3xl font-bold mb-6">Media Not Found</h2>
+        <a href="/" class="btn btn-primary btn-wide">Back to Discover</a>
+    </div>
+
+    <div x-show="!loading && media"
+        class="relative z-10 h-[calc(100vh-6rem)] flex flex-col px-4 lg:px-6 overflow-hidden" x-cloak>
+
+        <div class="flex-grow"></div>
+
+        <div class="pb-6 lg:pb-8">
+
+            <div class="flex flex-col lg:flex-row gap-4 lg:gap-8 items-start lg:items-end">
+
+                <div
+                    class="flex-shrink-0 relative z-10 w-28 sm:w-32 lg:w-44 shadow-2xl rounded-xl overflow-hidden self-center lg:self-start">
+                    <img :src="getPosterUrl(media?.poster_path || media?.poster_url)" :alt="media?.title"
+                        class="w-full h-auto object-cover transition-opacity duration-300"
+                        onerror="handleImageError(this)" />
+                </div>
+
+                <div class="flex-1 min-w-0 space-y-2 lg:space-y-3 relative z-10 text-shadow-sm">
+                    <nav class="flex gap-2 text-xs uppercase tracking-widest opacity-60 font-bold">
+                        <a href="/" class="hover:text-primary transition-colors">JF-Resolve</a>
+                        <span>/</span>
+                        <span
+                            x-text="media?.media_type === 'movie' ? 'Movies' : (media?.media_type === 'tv' ? 'TV Shows' : 'Library')"></span>
+                    </nav>
+
+                    <h1 class="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-black tracking-tight leading-none"
+                        x-text="media?.original_title || media?.title"></h1>
+
+                    <div
+                        class="flex flex-wrap items-center gap-3 text-xs lg:text-sm font-medium opacity-90 mt-1 lg:mt-2">
+                        <span class="font-bold text-primary" x-text="media?.year"></span>
+                        <span class="w-1 h-1 rounded-full bg-white/40"></span>
+
+                        <template x-if="media?.content_rating">
+                            <span class="border border-white/20 px-2 py-0.5 rounded text-[9px] uppercase"
+                                x-text="media?.content_rating"></span>
+                        </template>
+                        <span x-show="media?.content_rating" class="w-1 h-1 rounded-full bg-white/40"></span>
+
+                        <template x-if="media?.runtime">
+                            <span x-text="Math.floor(media.runtime / 60) + 'h ' + (media.runtime % 60) + 'm'"></span>
+                        </template>
+                        <template x-if="!media?.runtime && media?.total_seasons">
+                            <span
+                                x-text="media.total_seasons + (media.total_seasons === 1 ? ' Season' : ' Seasons')"></span>
+                        </template>
+
+                        <span class="w-1 h-1 rounded-full bg-white/40"></span>
+                        <template x-if="media?.vote_average">
+                            <div class="flex items-center gap-1 text-warning">
+                                <span>⭐</span>
+                                <span x-text="media?.vote_average?.toFixed(1)"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <p class="text-xs lg:text-sm leading-relaxed opacity-70 max-w-5xl line-clamp-2 hover:line-clamp-none transition-all"
+                        x-text="media?.overview || 'No description available'"></p>
+
+                    <div class="flex flex-col gap-2 lg:gap-3 pt-1">
+                        <div class="flex flex-wrap gap-2 lg:gap-3">
+                            <button class="btn btn-primary btn-sm lg:btn-md gap-2 shadow-lg shadow-primary/20"
+                                @click="playBestSource()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                </svg>
+                                Watch Now
+                            </button>
+
+                            <template x-if="media && media.id">
+                                <div class="flex gap-2">
+                                    <template x-if="media.media_type === 'tv'">
+                                        <button
+                                            class="btn btn-ghost btn-sm lg:btn-md gap-2 bg-white/5 border-white/10 hover:bg-primary/20 hover:border-primary/20"
+                                            @click="refreshMedia()" :disabled="processing">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                            Refresh
+                                        </button>
+                                    </template>
+
+                                    <button
+                                        class="btn btn-ghost btn-sm lg:btn-md gap-2 bg-white/5 border-white/10 hover:bg-error/20 hover:border-error/20"
+                                        @click="deleteMedia()" :disabled="processing">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Remove
+                                    </button>
+                                </div>
+                            </template>
+
+                            <template x-if="media && !media.id && media.tmdb_id">
+                                <button class="btn btn-secondary btn-sm lg:btn-md gap-2 shadow-lg" @click="addMedia()"
+                                    :disabled="processing">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Add to Library
+                                </button>
+                            </template>
+
+                            <template x-if="requestsEnabled && media && media.tmdb_id && ['movie', 'tv'].includes(media.media_type)">
+                                <button class="btn btn-outline btn-sm lg:btn-md gap-2"
+                                    @click="requestForJellyfin()"
+                                    :disabled="processing || requestStatus === 'pending' || requestStatus === 'approved'"
+                                    x-text="{ pending: 'Requested', approved: 'In Jellyfin', denied: 'Request Again', failed: 'Retry Request' }[requestStatus] || 'Request for Jellyfin'">
+                                </button>
+                            </template>
+
+                            <template x-if="!inWatchlist">
+                                <button class="btn btn-outline btn-sm lg:btn-md gap-2" @click="addToWatchlist()"
+                                    :disabled="processing">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                    </svg>
+                                    Add to Watchlist
+                                </button>
+                            </template>
+                            <template x-if="inWatchlist">
+                                <button class="btn btn-success btn-outline btn-sm lg:btn-md gap-2"
+                                    @click="removeFromWatchlist()" :disabled="processing">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                    </svg>
+                                    In Watchlist
+                                </button>
+                            </template>
+                        </div>
+
+                        <div x-show="totalSourceCount > 0"
+                            class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest opacity-60">
+                            <span class="flex h-2 w-2 rounded-full bg-success"></span>
+                            <span x-text="`${totalSourceCount} sources available`"></span>
+                            <span x-show="sources.local?.length > 0" class="badge badge-xs badge-primary"
+                                x-text="`${sources.local.length} Local`"></span>
+                        </div>
+                    </div>
+
+                    <template
+                        x-if="(media?.media_type === 'tv' || media?.media_type === 'video_series') && media?.seasons?.length > 0">
+                        <div class="space-y-3 mb-3">
+
+                            <div class="flex items-center justify-between border-b border-white/10 pb-1">
+                                <h2 class="text-[10px] uppercase tracking-widest font-black opacity-50">Seasons</h2>
+                            </div>
+                            <div
+                                class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                <template x-for="season in media.seasons" :key="season.season_number">
+                                    <button @click="selectSeason(season.season_number)"
+                                        class="flex-shrink-0 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold"
+                                        :class="selectedSeason === season.season_number
+                                        ? 'bg-primary text-primary-content border-primary shadow-lg shadow-primary/20'
+                                        : 'bg-white/5 border-white/5 hover:bg-white/10 opacity-70'">
+                                        <span
+                                            x-text="season.season_number === 0 ? 'Specials' : 'Season ' + season.season_number"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center justify-between border-b border-white/10 pb-1">
+                                <h2 class="text-[10px] uppercase tracking-widest font-black opacity-50">
+                                    Episodes
+                                    <template x-if="selectedSeason !== null">
+                                        <span class="text-[9px] ml-1 opacity-40 font-normal"
+                                            x-text="'(Season ' + selectedSeason + ')'"></span>
+                                    </template>
+                                </h2>
+                            </div>
+                            <div
+                                class="flex items-center gap-4 overflow-x-auto pb-4 px-2 pt-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                <template x-for="episode in selectedSeasonEpisodes" :key="episode.episode_number">
+                                    <div @click="selectEpisode(episode.episode_number)"
+                                        class="flex-shrink-0 w-80 min-h-[140px] bg-white/5 border border-white/5 rounded-2xl p-4 cursor-pointer transition-all group snap-start relative overflow-hidden"
+                                        :class="selectedEpisode === episode.episode_number ? 'ring-2 ring-primary bg-primary/20 scale-[1.02]' : 'hover:bg-white/10'">
+
+                                        <template x-if="episodeProgress[`${selectedSeason}_${episode.episode_number}`]">
+                                            <div class="absolute bottom-0 left-0 h-1.5 bg-primary/60 transition-all duration-500"
+                                                :style="`width: ${episodeProgress['' + selectedSeason + '_' + episode.episode_number]}%`"
+                                                style="box-shadow: 0 0 10px var(--p)">
+                                            </div>
+                                        </template>
+
+                                        <div class="flex justify-between items-start mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-black text-primary"
+                                                    x-text="'E' + episode.episode_number"></span>
+                                                <span class="w-1 h-1 rounded-full bg-white/20"></span>
+                                                <span class="text-[10px] opacity-40 font-bold"
+                                                    x-text="episode.runtime ? episode.runtime + 'm' : ''"></span>
+                                            </div>
+                                            <template
+                                                x-if="episodeProgress[`${selectedSeason}_${episode.episode_number}`] >= 90">
+                                                <span class="text-success shadow-sm">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                        viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd"
+                                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                            clip-rule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                            </template>
+                                        </div>
+                                        <div class="text-sm font-black line-clamp-1 leading-tight mb-2 group-hover:text-primary transition-colors"
+                                            x-text="episode.name || 'Episode ' + episode.episode_number"></div>
+                                        <div class="text-[11px] opacity-60 line-clamp-4 leading-relaxed"
+                                            x-text="episode.overview || 'No description available for this episode.'">
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="selectedSeasonEpisodes.length === 0">
+                                    <div class="w-full text-center py-4 opacity-40 italic text-xs">No episodes found for
+                                        this season.</div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <details class="mt-6">
+                        <summary class="cursor-pointer text-sm opacity-60 hover:opacity-100">More options</summary>
+                        <form @submit.prevent="playMagnet()" class="flex flex-wrap gap-2 mt-3">
+                            <input x-model="magnetLink" type="text" placeholder="Paste a magnet link" aria-label="Magnet link"
+                                class="input input-bordered input-sm flex-1 min-w-48" />
+                            <button type="submit" class="btn btn-sm btn-outline" :disabled="!magnetLink.trim()">Play magnet</button>
+                        </form>
+                    </details>
+
+                    <div id="sources-section" class="w-full min-w-0 mt-6 space-y-4"
+                        :class="{'opacity-50 pointer-events-none': sourcesLoading}">
+                        <div class="flex items-center justify-between border-b border-white/10 pb-2">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-sm uppercase tracking-widest font-black opacity-80">
+                                    Stream & Play
+                                </h2>
+                                <template x-if="sourcesLoading">
+                                    <span class="loading loading-spinner loading-xs text-primary"></span>
+                                </template>
+                            </div>
+                            <div class="flex gap-1" x-show="!sourcesLoading">
+                                <button @click="activeTab = 'all'"
+                                    class="px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all"
+                                    :class="activeTab === 'all' ? 'bg-white text-black' : 'hover:bg-white/10 opacity-60'">
+                                    All
+                                </button>
+                                <template x-if="sources.local?.length > 0">
+                                    <button @click="activeTab = 'local'"
+                                        class="px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all"
+                                        :class="activeTab === 'local' ? 'bg-primary text-primary-content' : 'hover:bg-white/10 opacity-60'">
+                                        Local
+                                    </button>
+                                </template>
+                                <template x-if="streamAddonCount > 0">
+                                    <button @click="activeTab = 'streams'"
+                                        class="px-3 py-1 text-[10px] font-bold uppercase rounded-full transition-all"
+                                        :class="activeTab === 'streams' ? 'bg-secondary text-secondary-content' : 'hover:bg-white/10 opacity-60'">
+                                        Streams
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="w-full max-w-full overflow-hidden">
+                            <div
+                                class="flex items-center overflow-x-auto gap-3 pb-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-primary/20 transition-all snap-x w-full min-h-28">
+
+                                <template x-if="activeTab === 'all' || activeTab === 'local'">
+                                    <template
+                                        x-for="(source, idx) in [...(sources.local || []), ...(sources.strm || [])]"
+                                        :key="source.id || source.file_path || idx">
+                                        <div @click="playSource(source)"
+                                            x-data="{ info: getSanitizedSourceInfo(source) }"
+                                            class="flex-shrink-0 w-64 h-32 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 cursor-pointer transition-all group snap-start flex flex-col justify-between">
+                                            <div class="space-y-2">
+                                                <div class="flex justify-between items-start">
+                                                    <div class="flex gap-1 flex-wrap">
+                                                        <span
+                                                            class="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold uppercase"
+                                                            x-text="source.resolution || 'HD'"></span>
+                                                        <template x-if="info.ext">
+                                                            <span
+                                                                class="text-[10px] bg-white/10 text-white/60 px-1.5 py-0.5 rounded font-bold uppercase"
+                                                                x-text="info.ext"></span>
+                                                        </template>
+                                                    </div>
+                                                    <span class="text-[10px] opacity-40 font-mono"
+                                                        x-show="source.file_size"
+                                                        x-text="formatFileSize(source.file_size)"></span>
+                                                </div>
+
+                                                <div class="text-xs font-extrabold line-clamp-2 leading-tight group-hover:text-primary transition-colors"
+                                                    x-text="info.title">
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center justify-between mt-auto pt-2">
+                                                <div class="text-[10px] opacity-40 truncate flex-1 mr-2"
+                                                    x-text="source.file_path"></div>
+                                                <div
+                                                    class="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-primary"
+                                                        fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M8 5v14l11-7z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </template>
+
+                                <template x-if="activeTab === 'all' || activeTab === 'streams'">
+                                    <template x-for="(streams, addonName) in sources.streams" :key="addonName">
+                                        <template x-for="(stream, index) in streams" :key="index">
+                                            <div @click="playStream(stream)"
+                                                x-data="{ info: getSanitizedSourceInfo(stream) }"
+                                                class="flex-shrink-0 w-64 h-32 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 cursor-pointer transition-all group snap-start flex flex-col justify-between">
+                                                <div class="space-y-2">
+                                                    <div class="flex justify-between items-start">
+                                                        <div class="flex gap-1 flex-wrap">
+                                                            <span
+                                                                class="text-[10px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-bold uppercase"
+                                                                x-text="addonName"></span>
+                                                            <span x-show="stream.resolution"
+                                                                class="text-[10px] bg-white/10 px-1.5 py-0.5 rounded font-bold uppercase"
+                                                                x-text="stream.resolution"></span>
+                                                        </div>
+                                                        <span x-show="stream.is_cached"
+                                                            class="text-[10px] text-success font-bold uppercase">⚡
+                                                            Cached</span>
+                                                    </div>
+
+                                                    <div class="text-xs font-extrabold line-clamp-2 leading-tight group-hover:text-primary transition-colors"
+                                                        x-text="info.title"></div>
+                                                </div>
+
+                                                <div class="flex items-center justify-between mt-auto pt-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <template x-if="stream.tag">
+                                                            <span
+                                                                class="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black uppercase ring-1 ring-primary/20"
+                                                                x-text="stream.tag"></span>
+                                                        </template>
+                                                        <span class="text-[10px] opacity-40 font-medium"
+                                                            x-text="stream.size || 'Unknown size'"></span>
+                                                    </div>
+
+                                                    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                                            class="h-3 w-3 text-primary" fill="currentColor"
+                                                            viewBox="0 0 24 24">
+                                                            <path d="M8 5v14l11-7z" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <template x-if="totalSourceCount === 0">
+                                    <div class="w-full text-center py-6 opacity-40 italic text-sm">
+                                        No sources found. Try re-adding or checking
+                                        addons.
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div x-show="$store.ui.playerOpen" class="fixed inset-0 z-[100] bg-black"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+
+            <div
+                class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-20 flex justify-between items-center opacity-100 md:opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <div class="flex items-center gap-4">
+                    <button @click="closePlayer()" class="btn btn-circle btn-ghost text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">
+                            <span x-text="media?.title || 'Untitled'"></span>
+                            <template x-if="currentPlayerSource?.season">
+                                <span class="text-primary"
+                                    x-text="` - S${String(currentPlayerSource.season).padStart(2, '0')}E${String(currentPlayerSource.episode).padStart(2, '0')}`"></span>
+                            </template>
+                        </h2>
+                        <p class="text-sm text-white/60" x-text="getSourceDisplayName()"></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <details class="dropdown dropdown-end">
+                        <summary class="btn btn-sm btn-ghost text-white">Download</summary>
+                        <ul class="dropdown-content menu bg-base-200 text-base-content rounded-box shadow-xl w-56 z-50">
+                            <li><a :href="deviceDownloadUrl()" download>Download to device</a></li>
+                            {% if user and user.is_superuser %}
+                            <li><button @click="saveDownloadOnServer()" :disabled="savingDownload">Save on server</button></li>
+                            {% endif %}
+                        </ul>
+                    </details>
+
+                    <div class="relative" x-show="allSources.length > 1">
+                        <button @click="sourceMenuOpen = !sourceMenuOpen"
+                            class="btn btn-sm btn-ghost text-white flex items-center gap-2 backdrop-blur-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 10l4 4 4-4" />
+                            </svg>
+                            <span x-text="`Source ${selectedSourceIndex + 1}/${allSources.length}`"></span>
+                        </button>
+
+                        <div x-show="sourceMenuOpen" @click.outside="sourceMenuOpen = false"
+                            class="absolute top-full right-0 mt-2 w-96 max-h-96 overflow-y-auto bg-base-300 rounded-lg shadow-2xl border border-white/10 backdrop-blur-md"
+                            x-transition>
+                            <div class="p-2 border-b border-white/10 text-xs font-bold uppercase text-white/60">
+                                Select Source
+                            </div>
+                            <div class="p-2 space-y-1">
+                                <template x-for="(source, index) in allSources" :key="index">
+                                    <button @click="switchSource(index)"
+                                        class="w-full text-left p-3 rounded-lg transition-all hover:bg-white/10 group"
+                                        :class="selectedSourceIndex === index ? 'bg-primary/20 ring-1 ring-primary' : 'bg-white/5'">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                                        :class="source.type === 'local' || source.type === 'strm' ? 'bg-primary/20 text-primary' : 'bg-secondary/20 text-secondary'"
+                                                        x-text="source.sourceType"></span>
+                                                    <span x-show="source.quality"
+                                                        class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10"
+                                                        x-text="source.quality"></span>
+                                                </div>
+                                                <div class="text-sm font-semibold text-white truncate"
+                                                    x-text="source.displayName"></div>
+                                            </div>
+                                            <div x-show="selectedSourceIndex === index"
+                                                class="flex-shrink-0 text-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
+                                                    fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-white" for="subtitle-selector">Subtitles</label>
+                        <select id="subtitle-selector" class="select select-sm bg-black/80 text-white"
+                            :value="selectedSubtitle" @change="selectSubtitle($event.target.value)"
+                            :disabled="subtitleLoading">
+                            <option value="off">Off</option>
+                            <template x-for="track in subtitleTracks" :key="track.index">
+                                <option :value="String(track.index)" :disabled="!track.supported"
+                                    x-text="`${track.language}${track.title ? ' · ' + track.title : ''}${track.supported ? '' : ' (image subtitles unavailable)'}`"></option>
+                            </template>
+                            <template x-for="(sub, i) in externalSubtitles" :key="sub.token">
+                                <option :value="`ext:${i}`" x-text="`${sub.language}${sub.label ? ' · ' + sub.label : ''} (${sub.provider})`"></option>
+                            </template>
+                            <option value="file" x-show="selectedSubtitle === 'file'">Local file</option>
+                        </select>
+                        <label class="btn btn-sm btn-ghost text-white">
+                            Load SRT/VTT
+                            <input type="file" accept=".srt,.vtt" class="hidden" @change="loadSubtitleFile($event)">
+                        </label>
+                        <span x-show="subtitleLoading" class="loading loading-spinner loading-sm"></span>
+                    </div>
+
+                    <div class="relative" x-show="audioTracks.length > 1">
+                        <button @click="audioMenuOpen = !audioMenuOpen"
+                            class="btn btn-sm btn-ghost text-white flex items-center gap-2 backdrop-blur-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.414A2 2 0 017 13h2a2 2 0 011.707.973m0 0A2 2 0 0112 15h0a2 2 0 012 2v0" />
+                            </svg>
+                            <span
+                                x-text="selectedAudioTrack !== null ? `Audio ${selectedAudioTrack + 1}` : 'Audio'"></span>
+                        </button>
+
+                        <div x-show="audioMenuOpen" @click.outside="audioMenuOpen = false"
+                            class="absolute top-full right-0 mt-2 w-80 max-h-80 overflow-y-auto bg-base-300 rounded-lg shadow-2xl border border-white/10 backdrop-blur-md"
+                            x-transition>
+                            <div class="p-2 border-b border-white/10 text-xs font-bold uppercase text-white/60">
+                                Select Audio Track
+                            </div>
+                            <div class="p-2 space-y-1">
+                                <template x-for="(track, index) in audioTracks" :key="track.index">
+                                    <button @click="switchAudioTrack(track.index)"
+                                        class="w-full text-left p-3 rounded-lg transition-all hover:bg-white/10"
+                                        :class="selectedAudioTrack === track.index ? 'bg-primary/20 ring-1 ring-primary' : 'bg-white/5'">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex-1">
+                                                <div class="text-sm font-semibold text-white"
+                                                    x-text="`Track ${index + 1}: ${track.language || 'Unknown'}`"></div>
+                                                <div class="text-xs text-white/60"
+                                                    x-text="`${track.codec || 'Unknown'} • ${track.channels || '?'} channels`">
+                                                </div>
+                                            </div>
+                                            <div x-show="selectedAudioTrack === track.index" class="text-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
+                                                    fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="closePlayer()" class="btn btn-circle btn-ghost text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="absolute inset-0 bg-black">
+                <div x-show="playerLoading" class="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 pointer-events-none text-white">
+                    <span class="loading loading-spinner loading-lg"></span>
+                    <span>Preparing playback…</span>
+                </div>
+                <div id="main-player" class="w-full h-full" :class="{transcoded: playerTranscoded}"></div>
+                <div x-show="playerTranscoded" class="absolute bottom-0 left-0 right-0 h-16 px-6 bg-black/90 flex items-center gap-3 z-40">
+                    <span class="text-xs text-white tabular-nums" x-text="formatPlayerTime(playerPosition)"></span>
+                    <input type="range" min="0" :max="Math.max(0, playerDuration - 0.1)" step="0.1"
+                        class="range range-primary range-sm flex-1" aria-label="Seek video"
+                        :value="seekPosition" @input="seekPosition = Number($event.target.value)"
+                        @change="seekPlayer($event.target.value)" :disabled="seekBusy || !playerDuration">
+                    <span class="text-xs text-white tabular-nums" x-text="formatPlayerTime(playerDuration)"></span>
+                    <span x-show="seekBusy" class="loading loading-spinner loading-sm text-white"></span>
+                </div>
+            </div>
+
+            <div id="paused-overlay"
+                class="absolute bottom-0 left-0 right-0 p-8 pb-20 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none z-30 transition-all duration-500 opacity-0"
+                style="display: none;">
+                <div class="max-w-2xl">
+                    <h2 class="text-3xl font-bold text-white mb-2" x-text="media?.title || 'Untitled'"></h2>
+                    <template x-if="currentPlayerSource?.season">
+                        <p class="text-primary font-semibold mb-3"
+                            x-text="`Season ${currentPlayerSource.season}, Episode ${currentPlayerSource.episode}`"></p>
+                    </template>
+                    <template x-if="media?.year">
+                        <p class="text-white/60 text-sm mb-3">
+                            <span x-text="media.year"></span>
+                            <template x-if="media?.content_rating">
+                                <span x-text="` • ${media.content_rating}`"></span>
+                            </template>
+                            <template x-if="media?.vote_average">
+                                <span x-text="` • ⭐ ${media.vote_average.toFixed(1)}`"></span>
+                            </template>
+                        </p>
+                    </template>
+                    <p class="text-white/80 text-sm leading-relaxed line-clamp-3" x-text="media?.overview || ''"></p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

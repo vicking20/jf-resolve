@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Downloads - JF-Resolve{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto py-6" x-data="downloadsPage()">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-2xl font-bold">Server downloads</h1>
+        <a href="/" class="btn btn-sm btn-ghost">Home</a>
+    </div>
+    <p x-show="error" x-text="error" class="text-error mb-4"></p>
+    <p x-show="!jobs.length" class="opacity-60">No server downloads yet. Choose Save on server in the video player.</p>
+    <div class="space-y-3">
+        <template x-for="job in jobs" :key="job.id">
+            <div class="jfr-panel rounded-2xl p-4">
+                <div class="flex flex-wrap justify-between gap-3">
+                    <div>
+                        <h2 class="font-semibold" x-text="job.title"></h2>
+                        <div class="text-sm opacity-60"><span x-text="job.status"></span> · <span x-text="size(job.bytes_downloaded)"></span><span x-show="job.total_bytes"> / <span x-text="size(job.total_bytes)"></span></span></div>
+                        <div class="text-sm opacity-60" x-text="job.filename"></div>
+                    </div>
+                    <button x-show="['queued','resolving','downloading'].includes(job.status)" @click="cancel(job.id)" class="btn btn-sm btn-outline">Cancel</button>
+                    <a x-show="job.local_source_id && job.media?.play_url" :href="job.media?.play_url ? job.media.play_url + '&source_id=' + job.local_source_id : '#'" class="btn btn-sm btn-primary">Play</a>
+                    <a x-show="job.status === 'completed'" :href="`/api/downloads/jobs/${job.id}/file`" class="btn btn-sm btn-outline" download>Download to device</a>
+                </div>
+                <progress x-show="job.total_bytes" class="progress progress-primary w-full mt-3" :value="job.bytes_downloaded" :max="job.total_bytes || 1"></progress>
+                <p x-show="job.library_error" x-text="job.library_error" class="text-warning text-sm mt-2"></p>
+                <p x-show="job.error" x-text="job.error" class="text-error text-sm mt-2"></p>
+            </div>
+        </template>
+    </div>
+</div>
+<script>
+function downloadsPage() {
+    return {
+        jobs: [], error: '', timer: null,
+        async init() { await this.refresh(); this.timer = setInterval(() => this.refresh(), 2000); },
+        destroy() { clearInterval(this.timer); },
+        size(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; },
+        async refresh() {
+            try {
+                const response = await fetch('/api/downloads/jobs');
+                if (!response.ok) throw new Error('Unable to load downloads');
+                this.jobs = await response.json(); this.error = '';
+            } catch (error) { this.error = error.message; }
+        },
+        async cancel(id) {
+            const response = await fetch(`/api/downloads/jobs/${id}`, {method: 'DELETE'});
+            if (!response.ok) this.error = 'Unable to cancel download';
+            await this.refresh();
+        }
+    };
+}
+</script>
+{% endblock %}

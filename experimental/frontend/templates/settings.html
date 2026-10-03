@@ -1,0 +1,1516 @@
+{% extends "base.html" %} {% block title %}Settings - JF-Resolve{% endblock %}
+{% block content %}
+
+<div x-data="settingsPage()" class="pb-32">
+    <h1 class="text-3xl font-bold mb-6 mt-4">Settings</h1>
+
+    <div
+        class="jfr-nav-surface jfr-settings-tabs mb-6 overflow-x-auto flex-nowrap w-full md:w-fit p-1 gap-1"
+    >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'general' ? 'tab-active' : ''"
+            @click="tab = 'general'"
+            >Experience</a
+        >
+        <a class="tab flex-shrink-0 rounded-full" :class="tab === 'connections' ? 'tab-active' : ''"
+            @click="tab = 'connections'">Connections</a>
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'library' ? 'tab-active' : ''"
+            @click="tab = 'library'"
+            >Library</a
+        >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'advanced' ? 'tab-active' : ''"
+            @click="tab = 'advanced'"
+            >Playback</a
+        >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'security' ? 'tab-active' : ''"
+            @click="tab = 'security'"
+            >Security</a
+        >
+        {% if user.is_superuser %}
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'plugins' ? 'tab-active' : ''"
+            @click="tab = 'plugins'"
+            >Plugins</a
+        >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'users' ? 'tab-active' : ''"
+            @click="tab = 'users'"
+            >Users</a
+        >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'requests' ? 'tab-active' : ''"
+            @click="tab = 'requests'; loadRequests()"
+            >Requests</a
+        >
+        <a
+            class="tab flex-shrink-0 rounded-full"
+            :class="tab === 'system' ? 'tab-active' : ''"
+            @click="tab = 'system'"
+            >System</a
+        >
+        {% endif %}
+    </div>
+
+    <div x-show="tab === 'general'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Experience</h2>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text"
+                            >Hide artwork background</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.disable_discover_backdrop"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Screensaver</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.screensaver_enabled"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary">
+                        <span x-show="!saving">Save Settings</span>
+                        <span
+                            x-show="saving"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'connections'" x-cloak class="space-y-5">
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Mode</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                    <template x-for="profile in [
+                        { id: 'standalone', title: 'Standalone', description: 'Web player' },
+                        { id: 'jellyfin', title: 'Jellyfin', description: 'STRM library' },
+                        { id: 'hybrid', title: 'Hybrid', description: 'Both' }
+                    ]" :key="profile.id">
+                        <button
+                            type="button"
+                            class="btn h-auto min-h-24 flex-col items-start normal-case p-4"
+                            :class="settings.operation_profile === profile.id ? 'btn-primary' : 'btn-outline'"
+                            :disabled="saving"
+                            @click="applyOperationProfile(profile.id)"
+                        >
+                            <span class="font-bold" x-text="profile.title"></span>
+                            <span class="text-xs text-left opacity-80" x-text="profile.description"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 mt-5">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Built-in web player</span>
+                        <input type="checkbox" x-model="settings.web_player_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Generate STRM files</span>
+                        <input type="checkbox" x-model="settings.strm_generation_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Jellyfin integration</span>
+                        <input type="checkbox" x-model="settings.jellyfin_integration_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Trigger Jellyfin scans</span>
+                        <input type="checkbox" x-model="settings.jellyfin_scan_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Local library scanning</span>
+                        <input type="checkbox" x-model="settings.local_library_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Torrent playback</span>
+                        <input type="checkbox" x-model="settings.torrent_playback_enabled" class="toggle toggle-primary" />
+                    </label>
+                    <div x-show="settings.torrent_playback_enabled" x-cloak class="pl-4 border-l border-base-300">
+                        <label class="cursor-pointer label">
+                            <span class="label-text">Allow uploading (seeding) while streaming</span>
+                            <input type="checkbox" x-model="settings.torrent_allow_upload" class="toggle toggle-warning" />
+                        </label>
+                        <label class="label" x-show="settings.torrent_allow_upload" x-cloak>
+                            <span class="label-text">Upload limit in KB/s (0 = unlimited)</span>
+                            <input type="number" min="0" x-model.number="settings.torrent_upload_limit_kbps" class="input input-bordered input-sm w-28" />
+                        </label>
+                        <p class="text-xs opacity-60 px-1">Off by default. Uploading shares data with other peers and opens a port on your router (UPnP).</p>
+                    </div>
+                </div>
+
+                <div x-show="settings.jellyfin_integration_enabled" x-cloak class="mt-4 space-y-3">
+                    <div class="divider">Jellyfin</div>
+                    <input class="input input-bordered w-full" x-model="settings.jfresolve_public_url" placeholder="JF-Resolve URL for Jellyfin" />
+                    <input class="input input-bordered w-full" x-model="settings.jellyfin_server_url" placeholder="Jellyfin server URL" />
+                    <input type="password" class="input input-bordered w-full" x-model="settings.jellyfin_api_key" placeholder="Jellyfin API key" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input class="input input-bordered" x-model="settings.jellyfin_movie_path" placeholder="Movie directory" />
+                        <input class="input input-bordered" x-model="settings.jellyfin_tv_path" placeholder="Series directory" />
+                    </div>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary" :disabled="saving">Save changes</button>
+                </div>
+            </div>
+        </div>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Metadata</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Cache duration (days)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.metadata_cache_days"
+                        class="input input-bordered"
+                        min="1"
+                        max="365"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">TMDB API Key</span></label
+                    >
+                    <input
+                        type="password"
+                        x-model="settings.tmdb_api_key"
+                        class="input input-bordered"
+                        placeholder="Enter your TMDB API key"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Get a key from
+                            <a
+                                href="https://www.themoviedb.org/settings/api"
+                                target="_blank"
+                                class="link link-primary"
+                                >TMDB</a
+                            ></span
+                        >
+                    </label>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary" :disabled="saving">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'library'" x-cloak>
+        <div class="card jfr-panel mb-6">
+            <div class="card-body">
+                <h2 class="card-title">Library Paths</h2>
+
+                <div class="space-y-4">
+                    <template x-for="path in libraryPaths" :key="path.id">
+                        <div class="alert flex">
+                            <div class="flex-1">
+                                <div class="font-bold" x-text="path.name"></div>
+                                <div
+                                    class="text-sm opacity-70"
+                                    x-text="path.path"
+                                ></div>
+                                <div
+                                    class="badge badge-sm mt-1"
+                                    x-text="path.media_type"
+                                ></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button
+                                    @click="openRescanModal(path)"
+                                    class="btn btn-sm btn-info btn-outline"
+                                    title="Rescan this library"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                        />
+                                    </svg>
+                                </button>
+                                <button
+                                    @click="editLibraryPath(path)"
+                                    class="btn btn-sm btn-ghost"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    @click="deleteLibraryPath(path.id)"
+                                    class="btn btn-sm btn-error"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div
+                        x-show="libraryPaths.length === 0"
+                        class="alert alert-info"
+                    >
+                        <span
+                            >No library paths configured. Add your first path to
+                            get started!</span
+                        >
+                    </div>
+                </div>
+
+                <div class="card-actions justify-end mt-4">
+                    <button
+                        @click="showAddPathModal = true"
+                        class="btn btn-primary"
+                    >
+                        Add Library Path
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Scanning</h2>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold"
+                            >Scan mode</span
+                        >
+                    </label>
+                    <select
+                        x-model="settings.library_scanner_mode"
+                        @change="updateScannerMode()"
+                        class="select select-bordered"
+                    >
+                        <option value="lazy">On demand</option>
+                        <option value="active">Continuous</option>
+                    </select>
+                    <label class="label">
+                        <span
+                            class="label-text-alt"
+                            x-show="settings.library_scanner_mode === 'lazy'"
+                        >
+                            Scan titles as needed.
+                        </span>
+                        <span
+                            class="label-text-alt"
+                            x-show="settings.library_scanner_mode === 'active'"
+                        >
+                            Watch library folders for changes.
+                        </span>
+                    </label>
+                </div>
+
+                <div
+                    class="alert alert-info text-sm mt-4"
+                    x-show="scannerStatus"
+                >
+                    <div>
+                        <div class="font-semibold">Scanner Status</div>
+                        <div class="text-xs opacity-70 mt-1">
+                            <span
+                                x-text="scannerStatus?.file_watcher?.running ? '✓ File watcher running' : '✗ File watcher stopped'"
+                            ></span>
+                            <span class="mx-2">•</span>
+                            <span
+                                x-text="'Watching ' + (scannerStatus?.watched_paths?.length || 0) + ' paths'"
+                            ></span>
+                            <span class="mx-2">•</span>
+                            <span
+                                x-text="'JIT cache: ' + (scannerStatus?.jit_cache?.total_cached_files || 0) + ' files'"
+                            ></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <div class="flex gap-2">
+                        <button
+                            @click="startScan(false)"
+                            class="btn btn-primary"
+                            :disabled="scanning"
+                        >
+                            <span x-show="!scanning">Scan Library</span>
+                            <span x-show="scanning" class="flex items-center">
+                                <span
+                                    class="loading loading-spinner loading-xs mr-2"
+                                ></span>
+                                Scanning...
+                            </span>
+                        </button>
+                        <button
+                            @click="startScan(true)"
+                            class="btn btn-error btn-outline"
+                            :disabled="scanning"
+                            title="Refresh all metadata"
+                        >
+                            <span x-show="!scanning">Replace Metadata</span>
+                            <span
+                                x-show="scanning"
+                                class="loading loading-spinner loading-xs"
+                            ></span>
+                        </button>
+                        <button @click="saveSettings()" class="btn btn-ghost">
+                            <span x-show="!saving">Save Settings</span>
+                            <span
+                                x-show="saving"
+                                class="loading loading-spinner"
+                            ></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'advanced'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Playback</h2>
+
+                <div class="divider mt-8">Streaming</div>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Transcoding</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.transcode_enabled"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Automatically transcode media when client doesn't
+                            support the codec</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Hardware Acceleration</span
+                        ></label
+                    >
+                    <select
+                        x-model="settings.hardware_acceleration"
+                        class="select select-bordered"
+                    >
+                        <option value="autodetect">Autodetect</option>
+                        <option value="none">None (CPU only)</option>
+                        <option value="nvidia">NVIDIA (NVENC)</option>
+                        <option value="intel">Intel Quick Sync (QSV)</option>
+                        <option value="amd">AMD (AMF)</option>
+                        <option value="apple">Apple VideoToolbox</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >GPU acceleration for faster encoding</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Max Concurrent Transcodes</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.max_concurrent_transcodes"
+                        class="input input-bordered"
+                        min="0"
+                        max="10"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Maximum simultaneous transcode sessions (0 =
+                            unlimited)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Queue Full Behavior</span
+                        ></label
+                    >
+                    <select
+                        x-model="settings.queue_full_behavior"
+                        class="select select-bordered"
+                    >
+                        <option value="wait">
+                            Wait for slot (recommended)
+                        </option>
+                        <option value="direct_proxy">
+                            Direct proxy (no transcode)
+                        </option>
+                        <option value="close_player">
+                            Show error and close player
+                        </option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >What to do when transcode queue is full</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text">Transcode Preset</span></label
+                    >
+                    <select
+                        x-model="settings.transcode_preset"
+                        class="select select-bordered"
+                    >
+                        <option value="ultrafast">
+                            Ultra Fast (low quality)
+                        </option>
+                        <option value="superfast">Super Fast</option>
+                        <option value="veryfast">
+                            Very Fast (recommended)
+                        </option>
+                        <option value="faster">Faster</option>
+                        <option value="fast">Fast</option>
+                        <option value="medium">Medium (balanced)</option>
+                        <option value="slow">Slow (high quality)</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Encoding speed vs quality tradeoff</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">HDR Tone Mapping</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.hdr_tone_mapping"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Convert HDR to SDR for non-HDR capable
+                            devices</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Target Video Codec</span
+                        ></label
+                    >
+                    <select
+                        x-model="settings.target_video_codec"
+                        class="select select-bordered"
+                    >
+                        <option value="h264">H.264 (most compatible)</option>
+                        <option value="hevc">H.265/HEVC</option>
+                        <option value="vp9">VP9</option>
+                        <option value="av1">AV1</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Target codec for transcoding</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Target Audio Codec</span
+                        ></label
+                    >
+                    <select
+                        x-model="settings.target_audio_codec"
+                        class="select select-bordered"
+                    >
+                        <option value="aac">AAC (most compatible)</option>
+                        <option value="mp3">MP3</option>
+                        <option value="opus">Opus</option>
+                        <option value="vorbis">Vorbis</option>
+                    </select>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Target audio codec for transcoding</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >HLS Segment Duration (seconds)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.hls_segment_duration"
+                        class="input input-bordered"
+                        min="2"
+                        max="10"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Duration of HLS segments for adaptive streaming
+                            (default: 4)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Buffer Size (seconds)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.buffer_size_seconds"
+                        class="input input-bordered"
+                        min="2"
+                        max="30"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Initial buffer before playback starts (default:
+                            6)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control" x-show="settings.transcode_enabled">
+                    <label class="cursor-pointer label">
+                        <span class="label-text"
+                            >Auto-Skip Invalid Streams</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.auto_skip_invalid_streams"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Automatically skip streams that are too short or
+                            invalid</span
+                        >
+                    </label>
+                </div>
+
+                <div
+                    class="form-control"
+                    x-show="settings.transcode_enabled && settings.auto_skip_invalid_streams"
+                >
+                    <label class="label"
+                        ><span class="label-text"
+                            >Minimum Valid Duration (seconds)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.min_valid_duration_seconds"
+                        class="input input-bordered"
+                        min="30"
+                        max="600"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Streams shorter than this will be skipped (default:
+                            120)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="divider mt-8">Content</div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Release Buffer Days</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.release_buffer_days"
+                        class="input input-bordered"
+                        min="0"
+                        max="30"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Filter out streams older than X days (default:
+                            2)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text"
+                            >NSFW Filter (Hide Adult Content)</span
+                        >
+                        <input
+                            type="checkbox"
+                            x-model="settings.nsfw_filter"
+                            class="checkbox"
+                        />
+                    </label>
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Filter out adult/NSFW content from search results
+                            and discover catalogues</span
+                        >
+                    </label>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary">
+                        <span x-show="!saving">Save Settings</span>
+                        <span
+                            x-show="saving"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'security'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Security Settings</h2>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Session Timeout (minutes)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.session_timeout"
+                        class="input input-bordered"
+                        min="15"
+                        max="10080"
+                    />
+                    <label class="label">
+                        <span class="label-text-alt"
+                            >Auto-logout after inactivity (default: 1440 = 24
+                            hours)</span
+                        >
+                    </label>
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary">
+                        <span x-show="!saving">Save Settings</span>
+                        <span
+                            x-show="saving"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if user.is_superuser %}
+    <div x-show="tab === 'plugins'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Plugins</h2>
+
+                <div class="flex justify-end items-center mb-6">
+                    <a href="/marketplace" class="btn btn-primary btn-sm">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
+                        </svg>
+                        Marketplace
+                    </a>
+                </div>
+
+                <div x-show="plugins.length === 0" class="alert alert-info">
+                    <span>No plugins installed.</span>
+                </div>
+
+                <div class="space-y-4">
+                    <template x-for="plugin in plugins" :key="plugin.id">
+                        <div class="border border-base-300 rounded-lg p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3
+                                            class="font-bold text-lg"
+                                            x-text="plugin.manifest?.name || plugin.id"
+                                        ></h3>
+                                        <span
+                                            class="badge badge-success badge-sm"
+                                            x-show="plugin.enabled"
+                                            >Enabled</span
+                                        >
+                                        <span
+                                            class="badge badge-sm"
+                                            x-text="plugin.manifest?.version"
+                                        ></span>
+                                    </div>
+                                    <p
+                                        class="text-sm opacity-70 mb-2"
+                                        x-text="plugin.manifest?.description"
+                                    ></p>
+                                    <div class="flex gap-2 text-xs opacity-60">
+                                        <span x-show="plugin.manifest?.author"
+                                            >by
+                                            <span
+                                                x-text="plugin.manifest?.author"
+                                            ></span
+                                        ></span>
+                                        <span x-show="plugin.manifest?.type"
+                                            >• Type:
+                                            <span
+                                                x-text="plugin.manifest?.type"
+                                            ></span
+                                        ></span>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button
+                                        class="btn btn-sm btn-ghost"
+                                        @click="configurePlugin(plugin)"
+                                        x-show="plugin.has_ui"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                            />
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                            />
+                                        </svg>
+                                        Configure
+                                    </button>
+                                    <button
+                                        class="btn btn-sm btn-error btn-outline"
+                                        @click="uninstallPlugin(plugin)"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            />
+                                        </svg>
+                                        Uninstall
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'users'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="card-title">Users</h2>
+                    </div>
+                    <button
+                        class="btn btn-primary btn-sm"
+                        @click="showCreateUserModal = true"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-4 w-4 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
+                        </svg>
+                        Create User
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="user in users" :key="user.id">
+                                <tr>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <span
+                                                class="font-semibold"
+                                                x-text="user.username"
+                                            ></span>
+                                            <span
+                                                class="badge badge-xs badge-info"
+                                                x-show="user.id === {{ user.id }}"
+                                                >You</span
+                                            >
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge"
+                                            :class="user.is_superuser ? 'badge-primary' : 'badge-ghost'"
+                                            x-text="user.is_superuser ? 'Admin' : 'User'"
+                                        ></span>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class="badge"
+                                            :class="user.is_active ? 'badge-success' : 'badge-error'"
+                                            x-text="user.is_active ? 'Active' : 'Inactive'"
+                                        ></span>
+                                    </td>
+                                    <td
+                                        class="text-sm opacity-70"
+                                        x-text="new Date(user.created_at).toLocaleDateString()"
+                                    ></td>
+                                    <td>
+                                        <div class="flex gap-2">
+                                            <button
+                                                class="btn btn-xs btn-ghost"
+                                                @click="editUser(user)"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-3 w-3"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                    />
+                                                </svg>
+                                                Edit
+                                            </button>
+                                            <button
+                                                class="btn btn-xs btn-error btn-outline"
+                                                @click="deleteUser(user)"
+                                                x-show="user.id !== {{ user.id }}"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="h-3 w-3"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                    />
+                                                </svg>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_superuser %}
+
+    <div x-show="tab === 'requests'" x-cloak>
+        <div class="card jfr-panel">
+            <div class="card-body">
+                <h2 class="card-title">Jellyfin requests</h2>
+                <p class="text-sm opacity-70" x-show="!settings.strm_generation_enabled">
+                    Requests are only available when STRM output is on (Jellyfin or Hybrid profile).
+                </p>
+                <p class="text-sm opacity-70" x-show="settings.strm_generation_enabled && requests.length === 0">
+                    No requests yet.
+                </p>
+                <div class="overflow-x-auto" x-show="requests.length > 0">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Title</th><th>Rating</th><th>User</th><th>Status</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="req in requests" :key="req.id">
+                                <tr>
+                                    <td>
+                                        <span x-text="req.title"></span>
+                                        <span class="opacity-60" x-text="req.year ? `(${req.year})` : ''"></span>
+                                        <span class="badge badge-ghost badge-sm" x-text="req.media_type"></span>
+                                    </td>
+                                    <td x-text="req.content_rating || 'Unrated'"></td>
+                                    <td x-text="req.username"></td>
+                                    <td>
+                                        <span class="badge badge-sm" x-text="req.status"
+                                            :class="{ 'badge-warning': req.status === 'pending', 'badge-success': req.status === 'approved', 'badge-error': req.status === 'failed' }"></span>
+                                        <div class="text-xs opacity-60" x-show="req.note" x-text="req.note"></div>
+                                    </td>
+                                    <td class="whitespace-nowrap text-right">
+                                        <button class="btn btn-xs btn-primary" x-show="req.status !== 'approved'"
+                                            @click="decideRequest(req, 'approve')">Approve</button>
+                                        <button class="btn btn-xs btn-ghost" x-show="req.status === 'pending'"
+                                            @click="decideRequest(req, 'deny')">Deny</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="tab === 'system'" x-cloak>
+        <div class="card jfr-panel mb-6">
+            <div class="card-body">
+                <h2 class="card-title">Activity and server</h2>
+
+                <div class="divider mt-8">Activity</div>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Log User Logins</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.log_user_logins"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div class="form-control">
+                    <label class="cursor-pointer label">
+                        <span class="label-text">Log Playback Events</span>
+                        <input
+                            type="checkbox"
+                            x-model="settings.log_playback_events"
+                            class="checkbox"
+                        />
+                    </label>
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Activity Retention (days)</span
+                        ></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.activity_retention_days"
+                        class="input input-bordered"
+                        min="7"
+                        max="365"
+                    />
+                </div>
+
+                <div class="divider mt-8">Server</div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">Server Host</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="settings.host"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">Server Port</span></label
+                    >
+                    <input
+                        type="number"
+                        x-model.number="settings.port"
+                        class="input input-bordered"
+                        min="1"
+                        max="65535"
+                    />
+                </div>
+
+                <div class="card-actions justify-end mt-6">
+                    <button @click="saveSettings()" class="btn btn-primary" :disabled="saving">Save changes</button>
+                </div>
+            </div>
+        </div>
+        <div class="card jfr-panel mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-info">Resource usage</h2>
+
+                <div class="form-control mb-4">
+                    <button @click="checkResources()" class="btn btn-info" :disabled="checkingResources">
+                        <span x-show="!checkingResources">Check Resources</span>
+                        <span x-show="checkingResources" class="loading loading-spinner loading-xs"></span>
+                    </button>
+                </div>
+
+                <div x-show="resources" class="space-y-3">
+
+                    <div class="p-3 bg-success/10 rounded-lg">
+                        <h3 class="text-sm font-bold mb-2 text-success">JF-Resolve Process (PID: <span x-text="resources?.process?.pid"></span>)</h3>
+                        <div class="space-y-1 font-mono text-sm">
+                            <div>CPU: <span class="text-success font-bold" x-text="resources?.process?.cpu_percent + '%'"></span></div>
+                            <div>Memory: <span class="text-success font-bold" x-text="resources?.process?.memory_mb + 'MB'"></span>
+                                 (<span class="text-success" x-text="resources?.process?.memory_percent + '%'"></span>)
+                                 of <span class="text-success" x-text="resources?.system?.memory?.total_gb + 'GB'"></span> total
+                            </div>
+                            <div>Threads: <span class="text-success font-bold" x-text="resources?.process?.num_threads"></span></div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-base-200 rounded-lg">
+                        <h3 class="text-sm font-bold mb-2">System Total</h3>
+                        <div class="space-y-1 font-mono text-sm">
+                            <div>CPU: <span class="text-primary font-bold" x-text="resources?.system?.cpu_percent + '%'"></span></div>
+                            <div>Memory: <span class="text-primary font-bold" x-text="resources?.system?.memory?.used_gb + 'GB'"></span> /
+                                 <span class="text-primary font-bold" x-text="resources?.system?.memory?.total_gb + 'GB'"></span> total
+                            </div>
+                            <div>Disk: <span class="text-primary font-bold" x-text="resources?.system?.disk?.used_gb + 'GB'"></span> /
+                                 <span class="text-primary" x-text="resources?.system?.disk?.total_gb + 'GB'"></span>
+                                 (<span class="text-primary" x-text="resources?.system?.disk?.percent + '%'"></span>)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card jfr-panel mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-primary">Catalogue sync</h2>
+                <div class="card-actions justify-start">
+                    <button
+                        @click="syncCatalogues()"
+                        class="btn btn-primary"
+                        :disabled="saving"
+                    >
+                        <span x-show="!saving">Sync catalogues</span>
+                        <span
+                            x-show="saving"
+                            class="loading loading-spinner"
+                        ></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card jfr-panel mb-6">
+            <div class="card-body">
+                <h2 class="card-title text-warning">Maintenance</h2>
+                <div class="flex flex-col gap-6">
+                    <div
+                        class="flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                        <div>
+                            <h3 class="font-bold mb-1">Restart Server</h3>
+                            <p class="text-sm opacity-70">
+                                Restart the backend service. This will
+                                disconnect active streams.
+                            </p>
+                        </div>
+                        <button
+                            @click="restartServer()"
+                            class="btn btn-warning btn-sm"
+                        >
+                            Restart Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div
+        x-show="showAddPathModal"
+        x-cloak
+        class="modal"
+        :class="{ 'modal-open': showAddPathModal }"
+    >
+        <div class="modal-box">
+            <h3
+                class="font-bold text-lg mb-4"
+                x-text="editingPath ? 'Edit Library Path' : 'Add Library Path'"
+            ></h3>
+
+            <div class="form-control">
+                <label class="label"
+                    ><span class="label-text">Name</span></label
+                >
+                <input
+                    type="text"
+                    x-model="newPath.name"
+                    class="input input-bordered"
+                    placeholder="e.g., Movies, TV Shows, Home Videos"
+                />
+            </div>
+
+            <div class="form-control mt-4">
+                <label class="label"
+                    ><span class="label-text">Path</span></label
+                >
+                <input
+                    type="text"
+                    x-model="newPath.path"
+                    class="input input-bordered"
+                    placeholder="/mnt/media/movies"
+                />
+                <label class="label">
+                    <span class="label-text-alt"
+                        >Absolute path to media directory</span
+                    >
+                </label>
+            </div>
+
+            <div class="form-control mt-4">
+                <label class="label"
+                    ><span class="label-text">Media Type</span></label
+                >
+                <select
+                    x-model="newPath.media_type"
+                    class="select select-bordered"
+                >
+                    <option value="movie">Movies</option>
+                    <option value="tv">TV Shows</option>
+                    <option value="video">Videos</option>
+                    <option value="video_series">Video Series</option>
+                </select>
+            </div>
+
+            <div class="modal-action">
+                <button
+                    @click="showAddPathModal = false; resetPathForm()"
+                    class="btn"
+                >
+                    Cancel
+                </button>
+                <button
+                    @click="addLibraryPath()"
+                    class="btn btn-primary"
+                    x-text="editingPath ? 'Save Changes' : 'Add Path'"
+                ></button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        x-show="showRescanModal"
+        x-cloak
+        class="modal"
+        :class="{ 'modal-open': showRescanModal }"
+    >
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Rescan Library</h3>
+            <p class="mb-6">
+                Choose how you want to scan
+                <span class="font-bold" x-text="rescanPath?.name"></span>:
+            </p>
+
+            <div class="flex flex-col gap-3">
+                <button @click="startPathScan(false)" class="btn btn-outline">
+                    Scan for changes (Recommended)
+                    <div class="text-xs font-normal opacity-70">
+                        Adds new files and updates availability
+                    </div>
+                </button>
+                <button
+                    @click="startPathScan(true)"
+                    class="btn btn-outline btn-warning"
+                >
+                    Replace Metadata (Slow)
+                    <div class="text-xs font-normal opacity-70">
+                        Refreshes info/images for ALL items
+                    </div>
+                </button>
+            </div>
+
+            <div class="modal-action">
+                <button @click="showRescanModal = false" class="btn">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        x-show="showCreateUserModal"
+        x-cloak
+        class="modal"
+        :class="{ 'modal-open': showCreateUserModal }"
+    >
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">Create New User</h3>
+
+            <div class="form-control">
+                <label class="label"
+                    ><span class="label-text">Username</span></label
+                >
+                <input
+                    type="text"
+                    x-model="newUser.username"
+                    class="input input-bordered"
+                    placeholder="username"
+                />
+            </div>
+
+            <div class="form-control mt-4">
+                <label class="label"
+                    ><span class="label-text">Password</span></label
+                >
+                <input
+                    type="password"
+                    x-model="newUser.password"
+                    class="input input-bordered"
+                    placeholder="••••••••"
+                />
+            </div>
+
+            <div class="form-control mt-4">
+                <label class="label"
+                    ><span class="label-text">Confirm Password</span></label
+                >
+                <input
+                    type="password"
+                    x-model="newUser.confirmPassword"
+                    class="input input-bordered"
+                    placeholder="••••••••"
+                />
+            </div>
+
+            <div class="form-control mt-4"></div>
+
+            <div class="modal-action">
+                <button
+                    @click="showCreateUserModal = false; resetNewUser()"
+                    class="btn"
+                >
+                    Cancel
+                </button>
+                <button @click="createUser()" class="btn btn-primary">
+                    Create User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div
+        x-show="showEditUserModal"
+        x-cloak
+        class="modal"
+        :class="{ 'modal-open': showEditUserModal }"
+    >
+        <template x-if="editingUser">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg mb-4">Edit User</h3>
+
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">Username</span></label
+                    >
+                    <input
+                        type="text"
+                        x-model="editingUser.username"
+                        class="input input-bordered"
+                    />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label cursor-pointer">
+                        <span class="label-text">Active</span>
+                        <input
+                            type="checkbox"
+                            x-model="editingUser.is_active"
+                            class="toggle toggle-success"
+                        />
+                    </label>
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label cursor-pointer">
+                        <span class="label-text">Administrator</span>
+                        <input
+                            type="checkbox"
+                            x-model="editingUser.is_superuser"
+                            class="checkbox checkbox-primary"
+                        />
+                    </label>
+                </div>
+
+                <div class="divider mt-6">Change Password</div>
+                <div class="form-control">
+                    <label class="label"
+                        ><span class="label-text">New Password</span></label
+                    >
+                    <input
+                        type="password"
+                        x-model="editingUser.new_password"
+                        class="input input-bordered"
+                        placeholder="Leave blank to keep current"
+                    />
+                </div>
+
+                <div class="form-control mt-4">
+                    <label class="label"
+                        ><span class="label-text"
+                            >Library Path Permissions</span
+                        ></label
+                    >
+                    <div class="text-sm opacity-70 mb-2">
+                        Select which library paths this user can access (leave
+                        empty for all)
+                    </div>
+                    <template x-for="path in libraryPaths" :key="path.id">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input
+                                type="checkbox"
+                                :checked="editingUser.permissions?.allowed_paths?.includes(path.id)"
+                                @change="toggleUserPath(path.id)"
+                                class="checkbox checkbox-sm"
+                            />
+                            <span class="label-text" x-text="path.name"></span>
+                        </label>
+                    </template>
+                </div>
+
+                <div class="modal-action">
+                    <button @click="showEditUserModal = false" class="btn">
+                        Cancel
+                    </button>
+                    <button @click="updateUser()" class="btn btn-primary">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div
+        x-show="toast.show"
+        x-transition
+        class="toast toast-top toast-center z-50 top-20"
+    >
+        <div
+            class="alert"
+            :class="{
+            'alert-success': toast.type === 'success',
+            'alert-error': toast.type === 'error',
+            'alert-info': toast.type === 'info'
+        }"
+        >
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pages/settings.js"></script>
+{% endblock %}

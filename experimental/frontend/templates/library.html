@@ -1,0 +1,246 @@
+{% extends "base.html" %} {% block title %}Library - JF-Resolve{% endblock %} {%
+block content %}
+
+<div x-data="libraryPage">
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 mt-4 gap-4">
+        <h1 class="text-3xl font-bold">My Library</h1>
+
+        <div class="flex gap-2 flex-wrap">
+
+            <div class="join">
+                <button class="join-item btn btn-sm" :class="filter === 'all' ? 'btn-primary' : ''"
+                    @click="filter = 'all'; selectedPath = null; loadLibrary()">
+                    All
+                </button>
+                <button class="join-item btn btn-sm" :class="filter === 'movies' ? 'btn-primary' : ''"
+                    @click="filter = 'movies'; selectedPath = null; loadLibrary()">
+                    Movies
+                </button>
+                <button class="join-item btn btn-sm" :class="filter === 'tv' ? 'btn-primary' : ''"
+                    @click="filter = 'tv'; selectedPath = null; loadLibrary()">
+                    TV Shows
+                </button>
+                <button class="join-item btn btn-sm" :class="filter === 'watchlist' ? 'btn-primary' : ''"
+                    @click="filter = 'watchlist'; selectedPath = null; loadLibrary()">
+                    Watchlist
+                </button>
+            </div>
+
+            <div class="join">
+                <button class="join-item btn btn-sm" :class="viewMode === 'grid' ? 'btn-active' : ''"
+                    @click="viewMode = 'grid'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </button>
+                <button class="join-item btn btn-sm" :class="viewMode === 'list' ? 'btn-active' : ''"
+                    @click="viewMode = 'list'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </div>
+
+            {% if user.is_superuser %}
+            <button x-show="selectedItems.length > 0" @click="deleteSelected()" class="btn btn-warning btn-sm">
+                Delete Selected (<span x-text="selectedItems.length"></span>)
+            </button>
+            <button @click="confirmPurge()" class="btn btn-error btn-sm">
+                Purge All
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div x-show="loading" class="flex justify-center py-12">
+        <span class="loading loading-spinner loading-lg"></span>
+    </div>
+
+    <div x-show="!loading && items.length === 0" class="text-center py-12">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto mb-4 opacity-50" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        <h3 class="text-xl font-bold mb-2">Your library is empty</h3>
+        <p class="text-gray-500 mb-4">
+            Start adding movies and TV shows from the Discover page
+        </p>
+        <a href="/" class="btn btn-primary">Go to Home</a>
+    </div>
+
+    <div x-show="!loading && items.length > 0 && viewMode === 'grid'">
+
+        {% if user.is_superuser %}
+        <div class="mb-4">
+            <label class="label cursor-pointer justify-start gap-2 w-fit">
+                <input type="checkbox" class="checkbox checkbox-sm" :checked="allSelected"
+                    @change="toggleSelectAll()" />
+                <span class="label-text">Select All</span>
+            </label>
+        </div>
+        {% endif %}
+
+        <div
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 lg:gap-6">
+            <template x-for="item in items" :key="item.uuid">
+                <div class="jfr-poster-card group relative cursor-pointer"
+                    @click="showDetail(item)">
+
+                    {% if user.is_superuser %}
+                    <div class="absolute top-3 left-3 z-20" @click.stop>
+                        <input type="checkbox"
+                            class="checkbox checkbox-primary checkbox-sm bg-base-100/50 backdrop-blur-md border-white/20"
+                            :checked="isSelected(item)" @change="toggleSelection(item)" />
+                    </div>
+                    {% endif %}
+
+                    <div class="aspect-[2/3] relative overflow-hidden">
+                        <img :src="getPosterUrl(item.poster_path, item)" :alt="item.title"
+                            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+
+                        <div
+                            class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="badge badge-primary badge-xs font-black uppercase"
+                                    x-text="item.media_type"></span>
+                                <span class="text-[10px] font-bold text-white/80" x-text="item.year"></span>
+                            </div>
+                            <p class="text-[10px] text-white/60 line-clamp-2" x-text="item.overview"></p>
+                        </div>
+                    </div>
+
+                    <div class="jfr-poster-info p-3">
+                        <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
+                            x-text="item.title"></h3>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-[9px] font-bold uppercase tracking-widest opacity-40"
+                                x-text="item.year || 'Unknown'"></span>
+                            <div class="flex gap-1">
+                                <template x-if="item.progress_percentage > 0">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_var(--p)]"></div>
+                                </template>
+                                <span class="text-[9px] font-black"
+                                    :class="item.media_type === 'movie' ? 'text-info' : 'text-success'"
+                                    x-text="item.media_type === 'movie' ? 'MOV' : 'TV'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div x-show="!loading && items.length > 0 && viewMode === 'list'">
+
+        {% if user.is_superuser %}
+        <div class="mb-4">
+            <label class="label cursor-pointer justify-start gap-2 w-fit">
+                <input type="checkbox" class="checkbox checkbox-sm" :checked="allSelected"
+                    @change="toggleSelectAll()" />
+                <span class="label-text">Select All</span>
+            </label>
+        </div>
+        {% endif %}
+
+        <div class="space-y-2">
+            <template x-for="item in items" :key="item.uuid">
+                <div class="card jfr-panel hover:border-white/20 transition-colors cursor-pointer"
+                    @click="showDetail(item)">
+                    <div class="card-body p-4">
+                        <div class="flex gap-4">
+                            {% if user.is_superuser %}
+                            <div @click.stop>
+                                <input type="checkbox" class="checkbox" :checked="isSelected(item)"
+                                    @change="toggleSelection(item)" />
+                            </div>
+                            {% endif %}
+                            <img :src="getPosterUrl(item.poster_path, item)" :alt="item.title"
+                                class="w-16 h-24 object-cover rounded" />
+                            <div class="flex-1">
+                                <h3 class="font-bold text-lg" x-text="item.title"></h3>
+                                <div class="flex gap-2 mt-1 mb-2">
+                                    <span class="badge badge-sm"
+                                        :class="item.media_type === 'movie' ? 'badge-info' : 'badge-success'"
+                                        x-text="item.media_type"></span>
+                                    <span class="badge badge-sm badge-ghost" x-text="item.year"></span>
+                                    <template x-for="quality in getQualities(item)" :key="quality">
+                                        <span class="badge badge-sm badge-outline" x-text="quality"></span>
+                                    </template>
+                                </div>
+                                <p class="text-sm opacity-70 line-clamp-2"
+                                    x-text="item.overview || 'No description available'"></p>
+                            </div>
+                            {% if user.is_superuser %}
+                            <div class="flex flex-col gap-2">
+                                <button @click.stop="refreshItem(item)" class="btn btn-sm btn-primary"
+                                    x-show="item.media_type === 'tv'" :disabled="refreshing === item.id">
+                                    <span x-show="refreshing !== item.id">Refresh</span>
+                                    <span x-show="refreshing === item.id"
+                                        class="loading loading-spinner loading-xs"></span>
+                                </button>
+                                <button @click.stop="removeItem(item)" class="btn btn-sm btn-error"
+                                    :disabled="deleting === item.id">
+                                    <span x-show="deleting !== item.id">Delete</span>
+                                    <span x-show="deleting === item.id"
+                                        class="loading loading-spinner loading-xs"></span>
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mt-16 mb-16" x-show="totalItems > 0">
+        <div class="flex items-center gap-4">
+            <span class="text-sm">
+                Showing
+                <span class="font-bold" x-text="((page - 1) * pageSize) + 1"></span>
+                to
+                <span class="font-bold" x-text="Math.min(page * pageSize, totalItems)"></span>
+                of
+                <span class="font-bold" x-text="totalItems"></span>
+            </span>
+            <select x-model="pageSize" @change="page = 1; loadLibrary()" class="select select-bordered select-sm">
+                <option value="20">20</option>
+                <option value="40">40</option>
+                <option value="60">60</option>
+            </select>
+        </div>
+
+        <div class="join">
+            <button class="join-item btn btn-sm" @click="changePage(page - 1)" :disabled="page <= 1">
+                «
+            </button>
+            <template x-for="p in getPageNumbers()" :key="p">
+                <button class="join-item btn btn-sm"
+                    :class="p === page ? 'btn-primary' : (p === '...' ? 'btn-disabled' : '')"
+                    @click="p !== '...' && changePage(p)" x-text="p"></button>
+            </template>
+            <button class="join-item btn btn-sm" @click="changePage(page + 1)" :disabled="page >= totalPages">
+                »
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pages/library.js"></script>
+
+<style>
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}

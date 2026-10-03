@@ -1,0 +1,10 @@
+{
+  "id": "com.vicking20.stream-manager",
+  "name": "Stream Manager",
+  "version": "1.1.0",
+  "description": "Resolves streams from a Stremio manifest URL",
+  "author": "Vicking20",
+  "capabilities": [
+    "source"
+  ]
+}

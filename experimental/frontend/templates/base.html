@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}JF-Resolve{% endblock %}</title>
+
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    <link rel="icon" type="image/png" href="/static/jfresolve.png" />
+
+    <script src="/static/vendor/js/hls.js" onerror="
+                this.onerror = null;
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js';
+                document.head.appendChild(script);
+            "></script>
+
+    <script src="/static/vendor/js/artplayer.js" onerror="
+                this.onerror = null;
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/artplayer@5.1.7/dist/artplayer.js';
+                document.head.appendChild(script);
+            "></script>
+
+    <link href="/static/vendor/css/daisyui.min.css" rel="stylesheet" type="text/css" onerror="
+                this.onerror = null;
+                this.href =
+                    'https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css';
+            " />
+
+    <script src="/static/vendor/js/tailwind.js" onerror="
+                this.onerror = null;
+                const script = document.createElement('script');
+                script.src = 'https://cdn.tailwindcss.com';
+                document.head.appendChild(script);
+            "></script>
+
+    <script defer src="/static/vendor/js/alpine.min.js" onerror="
+                this.onerror = null;
+                const script = document.createElement('script');
+                script.defer = true;
+                script.src =
+                    'https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js';
+                document.head.appendChild(script);
+            "></script>
+
+    <script src="/static/js/shared/auth.js"></script>
+    <script src="/static/js/shared/utils.js"></script>
+
+    <script>
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", function () {
+                document.documentElement.classList.add("ready");
+            });
+        } else {
+            document.documentElement.classList.add("ready");
+        }
+
+        document.addEventListener(
+            "error",
+            function (e) {
+                if (
+                    e.target.tagName === "IMG" &&
+                    !e.target.classList.contains("no-fallback") &&
+                    e.target.src !==
+                    window.location.origin +
+                    "/static/images/default_poster.png"
+                ) {
+                    e.target.src = "/static/images/default_poster.png";
+                }
+            },
+            true,
+        );
+    </script>
+
+    <script>
+        document.addEventListener("alpine:init", () => {
+
+            Alpine.data("auth", () => ({
+                isLoggedIn: false,
+                user: null,
+                init() {
+                    getCurrentUser().then((user) => {
+                        if (user) {
+                            this.isLoggedIn = true;
+                            this.user = user;
+                        }
+                    });
+                },
+                logout() {
+                    window.logout();
+                },
+            }));
+
+            Alpine.store("notifications", {
+                isOpen: false,
+                type: "info",
+                title: "",
+                message: "",
+                confirmCallback: null,
+
+                show(title, message, type = "info") {
+                    this.type = type;
+                    this.title = title;
+                    this.message = message;
+                    this.isOpen = true;
+                    if (type !== "confirm") {
+                        setTimeout(
+                            () => {
+                                this.isOpen = false;
+                            },
+                            type === "error" ? 5000 : 3000,
+                        );
+                    }
+                },
+
+                success(message, title = "Success") {
+                    this.show(title, message, "success");
+                },
+
+                error(message, title = "Error") {
+                    this.show(title, message, "error");
+                },
+
+                info(message, title = "Info") {
+                    this.show(title, message, "info");
+                },
+
+                confirm(title, message, callback) {
+                    this.type = "confirm";
+                    this.title = title;
+                    this.message = message;
+                    this.confirmCallback = callback;
+                    this.isOpen = true;
+                },
+
+                async handleConfirm() {
+                    this.isOpen = false;
+                    if (this.confirmCallback) {
+                        try {
+                            await this.confirmCallback();
+                        } catch (e) {
+                            console.error("Confirm callback failed", e);
+                        }
+                        this.confirmCallback = null;
+                    }
+                },
+
+                handleCancel() {
+                    this.isOpen = false;
+                    this.confirmCallback = null;
+                },
+            });
+
+            Alpine.store("ui", {
+                isFullscreen: false,
+                playerOpen: false,
+                isSearch: window.location.pathname === "/search",
+
+                toggleFullscreen() {
+                    if (!document.fullscreenElement) {
+                        document.documentElement
+                            .requestFullscreen()
+                            .catch((err) => {
+                                console.error(
+                                    `Error attempting to enable full-screen mode: ${err.message}`,
+                                );
+                            });
+                        this.isFullscreen = true;
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                            this.isFullscreen = false;
+                        }
+                    }
+                },
+            });
+        });
+
+        window.addEventListener("update-background", (e) => {
+            const url = e.detail;
+            if (!url) return;
+
+            const img = new Image();
+            img.src = url;
+            img.onload = () => {
+
+                let backdrop = document.getElementById("global-backdrop");
+                if (!backdrop) {
+                    backdrop = document.createElement("div");
+                    backdrop.id = "global-backdrop";
+                    backdrop.className =
+                        "fixed inset-0 -z-50 transition-opacity duration-1000 opacity-0 pointer-events-none";
+                    backdrop.style.backgroundSize = "cover";
+                    backdrop.style.backgroundPosition = "center";
+                    document.body.prepend(backdrop);
+                }
+
+                backdrop.style.backgroundImage = `linear-gradient(to top, hsl(var(--b3)), rgba(var(--b3-rgb), 0.7)), url(${url})`;
+                backdrop.classList.remove("opacity-0");
+                backdrop.classList.add("opacity-30");
+            };
+        });
+    </script>
+
+    <style>
+        :root {
+            --jfr-surface: rgba(16, 20, 28, 0.76);
+            --jfr-surface-strong: rgba(12, 15, 22, 0.92);
+            --jfr-line: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 12% -10%, rgba(217, 153, 64, 0.16), transparent 34rem),
+                radial-gradient(circle at 100% 18%, rgba(55, 126, 184, 0.14), transparent 32rem),
+                linear-gradient(145deg, #090b10 0%, #10141c 48%, #090b10 100%);
+            background-attachment: fixed;
+        }
+
+        .jfr-glass {
+            background: var(--jfr-surface);
+            border: 1px solid var(--jfr-line);
+            box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(18px) saturate(125%);
+            -webkit-backdrop-filter: blur(18px) saturate(125%);
+        }
+
+        .jfr-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            isolation: isolate;
+        }
+
+        .jfr-topbar::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 -2rem;
+            z-index: -1;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(9, 12, 18, .94) 0%, rgba(9, 12, 18, .72) 52%, transparent 100%);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+        }
+
+        .jfr-nav-surface {
+            display: flex;
+            align-items: center;
+            background: rgba(24, 28, 38, .64);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 999px;
+            box-shadow: inset 0 1px rgba(255, 255, 255, .06), 0 8px 24px rgba(0, 0, 0, .14);
+        }
+
+        .jfr-nav-link {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 2rem;
+            padding: .4rem 1rem;
+            border-radius: 999px;
+            color: rgba(255, 255, 255, .68);
+            font-size: .8rem;
+            font-weight: 600;
+            transition: background .2s, color .2s;
+        }
+
+        .jfr-nav-link:hover,
+        .jfr-nav-link[aria-current="page"] {
+            background: rgba(255, 255, 255, .12);
+            color: white;
+        }
+
+        .jfr-nav-link[aria-current="page"] {
+            background: oklch(var(--p));
+            color: oklch(var(--pc));
+        }
+
+        .jfr-profile-trigger {
+            width: 2.25rem;
+            height: 2.25rem;
+            min-height: 0;
+            padding: 0;
+        }
+
+        .jfr-profile-menu {
+            top: calc(100% + .9rem);
+            right: 0;
+            margin-top: 0;
+            max-height: calc(100vh - 7rem);
+            overflow-y: auto;
+        }
+
+        .jfr-settings-tabs .tab.tab-active,
+        .jfr-filter-tabs .tab.tab-active {
+            background: oklch(var(--p));
+            color: oklch(var(--pc));
+            border: 0;
+        }
+
+        .jfr-panel {
+            background: rgba(20, 24, 33, .78);
+            border: 1px solid rgba(255, 255, 255, .09);
+            border-radius: 1.4rem;
+            box-shadow: inset 0 1px rgba(255, 255, 255, .04), 0 14px 34px rgba(0, 0, 0, .16);
+        }
+
+        .jfr-poster-card {
+            background: rgba(19, 23, 32, .82);
+            border: 1px solid rgba(255, 255, 255, .09);
+            border-radius: 1.15rem;
+            overflow: hidden;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+            transition: transform .2s, border-color .2s, box-shadow .2s;
+        }
+
+        .jfr-poster-card:hover,
+        .jfr-poster-card:focus-within {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, .22);
+            box-shadow: 0 18px 38px rgba(0, 0, 0, .25);
+        }
+
+        .jfr-poster-info {
+            background: linear-gradient(145deg, rgba(29, 34, 45, .96), rgba(17, 21, 30, .96));
+            border-top: 1px solid rgba(255, 255, 255, .07);
+        }
+
+        @media (max-width: 767px) {
+            body { background-attachment: scroll; padding-bottom: 5.5rem !important; }
+            .jfr-glass {
+                background: rgba(13, 17, 24, 0.9);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            .jfr-mobile-nav a {
+                width: 100%;
+                min-width: 0;
+                padding: .25rem 0;
+                font-size: .6rem;
+                line-height: 1.1;
+            }
+            .jfr-mobile-nav a span { max-width: 100%; white-space: nowrap; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        html {
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        html.ready {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .media-card {
+            position: relative;
+            width: 10rem;
+            height: 15rem;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            z-index: 10;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .media-card-fluid {
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 2/3;
+        }
+
+        @media (min-width: 640px) {
+            .media-card:not(.media-card-fluid) {
+                width: 12rem;
+                height: 18rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .media-card:not(.media-card-fluid) {
+                width: 14rem;
+                height: 21rem;
+            }
+        }
+
+        .media-card:hover {
+            transform: scale(1.05);
+            z-index: 50;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            -ms-overflow-style: none;
+
+            scrollbar-width: none;
+
+        }
+
+        *::-webkit-scrollbar {
+            display: none;
+
+        }
+
+        .media-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .carousel-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 20px;
+            padding-top: 10px;
+            display: flex;
+            gap: 2rem;
+            scroll-behavior: smooth;
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="min-h-screen text-base-content overflow-x-hidden overflow-y-auto p-0 m-0">
+
+    {% block navbar %}
+    <div class="jfr-topbar py-2 pointer-events-none">
+        <div class="navbar w-[94%] max-w-[1700px] mx-auto pointer-events-auto min-h-11 px-0 md:px-2 gap-2">
+
+            <div class="navbar-start">
+                <a href="/" class="jfr-nav-surface min-h-11 px-2.5 md:px-3 text-base items-center gap-2" aria-label="JF-Resolve home">
+                    <img src="/static/jfresolve.png" alt="JF-Resolve" class="h-6 w-6" />
+                    <span class="hidden sm:inline"><span class="text-primary">JF</span>-Resolve</span>
+                </a>
+            </div>
+
+            <div class="navbar-center hidden lg:flex">
+                <nav class="jfr-nav-surface gap-1 p-1" aria-label="Main navigation">
+                    <a href="/" class="jfr-nav-link" {% if request.url.path == '/' %}aria-current="page"{% endif %}>Home</a>
+                    <a href="/discover" class="jfr-nav-link" {% if request.url.path == '/discover' %}aria-current="page"{% endif %}>Discover</a>
+                    <a href="/library" class="jfr-nav-link" {% if request.url.path == '/library' %}aria-current="page"{% endif %}>Library</a>
+                </nav>
+            </div>
+
+            <div class="navbar-end flex items-center gap-2" x-data="auth" x-init="init()">
+
+                <a :href="$store.ui.isSearch ? '/' : '/search'" class="jfr-nav-surface h-10 w-10 justify-center" aria-label="Search">
+                    <template x-if="!$store.ui.isSearch">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </template>
+                    <template x-if="$store.ui.isSearch">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                    </template>
+                </a>
+
+                <div class="dropdown dropdown-end jfr-nav-surface h-10 w-10 justify-center" x-show="isLoggedIn" x-cloak x-data="{ open: false }"
+                    @click.away="open = false; $el.querySelector('label').blur()">
+                    <label tabindex="0" class="btn btn-ghost btn-circle avatar placeholder jfr-profile-trigger"
+                        @click="open = !open; if (!open) $el.blur()">
+                        <div class="bg-primary text-primary-content rounded-full w-8">
+                            <span class="text-base uppercase" x-text="user ? user.username[0] : 'U'"></span>
+                        </div>
+                    </label>
+                    <ul tabindex="0"
+                        class="menu menu-sm dropdown-content jfr-profile-menu z-[100] p-2 shadow bg-base-200/95 backdrop-blur-lg rounded-box w-52 border border-white/10">
+                        <li class="mb-1">
+                            <a href="/" :class="window.location.pathname === '/' ? 'active' : ''"
+                                @click="document.activeElement.blur()">Home</a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="/discover" :class="window.location.pathname === '/discover' ? 'active' : ''"
+                                @click="document.activeElement.blur()">Discover</a>
+                        </li>
+                        <li class="mb-1">
+                            <a href="/library" :class="window.location.pathname === '/library' ? 'active' : ''"
+                                @click="document.activeElement.blur()">Library</a>
+                        </li>
+
+                        <template x-if="user?.is_superuser">
+                            <li class="mb-1">
+                                <a href="/downloads" :class="window.location.pathname === '/downloads' ? 'active' : ''"
+                                    @click="document.activeElement.blur()">Downloads</a>
+                            </li>
+                        </template>
+
+                        <template x-if="user?.is_superuser">
+                            <li class="mb-1">
+                                <a href="/settings" :class="window.location.pathname === '/settings' ? 'active' : ''"
+                                    @click="document.activeElement.blur()">Settings</a>
+                            </li>
+                        </template>
+                        <template x-if="user?.is_superuser">
+                            <li class="mb-1">
+                                <a href="/logs" :class="window.location.pathname === '/logs' ? 'active' : ''"
+                                    @click="document.activeElement.blur()">Activity</a>
+                            </li>
+                        </template>
+
+                        <div class="divider my-1"></div>
+
+                        <li class="mb-1">
+                            <a @click="$store.ui.toggleFullscreen()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                                <span x-text="$store.ui.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'"></span>
+                            </a>
+                        </li>
+
+                        <li class="mb-1">
+                            <a @click="logout()" class="text-error">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <a x-show="!isLoggedIn" href="/login" class="btn btn-sm btn-primary" x-cloak>Login</a>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    <main class="w-[96%] max-w-[1700px] mx-auto pt-0">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% if user is defined %}
+    <nav class="jfr-mobile-nav md:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[90] jfr-glass rounded-2xl px-2 py-1.5 w-[92%] max-w-md">
+        <div class="grid {% if user is defined and user.is_superuser %}grid-cols-5{% else %}grid-cols-4{% endif %} gap-1">
+            <a href="/" class="btn btn-sm h-12 flex-col gap-0 rounded-xl {% if request.url.path == '/' %}btn-primary{% else %}btn-ghost{% endif %}" aria-label="Home" {% if request.url.path == '/' %}aria-current="page"{% endif %}>
+                <span class="text-lg leading-none">⌂</span><span>Home</span>
+            </a>
+            <a href="/discover" class="btn btn-sm h-12 flex-col gap-0 rounded-xl {% if request.url.path == '/discover' %}btn-primary{% else %}btn-ghost{% endif %}" aria-label="Discover" {% if request.url.path == '/discover' %}aria-current="page"{% endif %}>
+                <span class="text-lg leading-none">◫</span><span>Discover</span>
+            </a>
+            <a href="/search" class="btn btn-sm h-12 flex-col gap-0 rounded-xl {% if request.url.path == '/search' %}btn-primary{% else %}btn-ghost{% endif %}" aria-label="Search" {% if request.url.path == '/search' %}aria-current="page"{% endif %}>
+                <span class="text-lg leading-none">⌕</span><span>Search</span>
+            </a>
+            <a href="/library" class="btn btn-sm h-12 flex-col gap-0 rounded-xl {% if request.url.path == '/library' %}btn-primary{% else %}btn-ghost{% endif %}" aria-label="Library" {% if request.url.path == '/library' %}aria-current="page"{% endif %}>
+                <span class="text-lg leading-none">▤</span><span>Library</span>
+            </a>
+            {% if user is defined and user.is_superuser %}
+                <a href="/settings" class="btn btn-sm h-12 flex-col gap-0 rounded-xl {% if request.url.path == '/settings' %}btn-primary{% else %}btn-ghost{% endif %}" aria-label="Settings" {% if request.url.path == '/settings' %}aria-current="page"{% endif %}>
+                    <span class="text-lg leading-none">●</span><span>Settings</span>
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    {% block extra_scripts %}{% endblock %}
+
+    <div x-data x-show="$store.notifications.isOpen" x-cloak
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50"
+        @click.self="$store.notifications.handleCancel()">
+        <div class="bg-base-200 rounded-lg shadow-xl max-w-md w-full mx-4 p-6" @click.stop>
+            <h3 class="text-lg font-bold mb-4" :class="{
+                    'text-success': $store.notifications.type === 'success',
+                    'text-error': $store.notifications.type === 'error',
+                    'text-info': $store.notifications.type === 'info',
+                    'text-warning': $store.notifications.type === 'confirm'
+                }" x-text="$store.notifications.title"></h3>
+
+            <p class="mb-6" x-text="$store.notifications.message"></p>
+
+            <div class="flex justify-end gap-2">
+                <template x-if="$store.notifications.type === 'confirm'">
+                    <div class="flex gap-2">
+                        <button @click="$store.notifications.handleCancel()" class="btn btn-ghost">
+                            Cancel
+                        </button>
+                        <button @click="$store.notifications.handleConfirm()" class="btn btn-error">
+                            Confirm
+                        </button>
+                    </div>
+                </template>
+                <template x-if="$store.notifications.type !== 'confirm'">
+                    <button @click="$store.notifications.isOpen = false" class="btn btn-primary">
+                        OK
+                    </button>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <div x-data="screensaver" x-show="params.enabled && active && !$store.ui.playerOpen" x-transition.opacity.duration.1000ms
+        class="fixed inset-0 z-[9999] bg-black pointer-events-none" style="display: none">
+
+        <template x-for="(image, index) in images" :key="index">
+            <div x-show="currentIndex === index" x-transition:enter="transition ease-out duration-1000"
+                x-transition:enter-start="opacity-0 scale-105" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-1000" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95" class="absolute inset-0">
+                <img :src="image.url" class="w-full h-full object-cover opacity-60" alt="Screensaver" />
+                <div class="absolute inset-x-0 bottom-0 p-12 bg-gradient-to-t from-black via-black/50 to-transparent">
+                    <h1 class="text-4xl md:text-6xl font-black text-white mb-2" x-text="image.title"></h1>
+                    <p class="text-xl text-white/80" x-text="image.year"></p>
+                </div>
+            </div>
+        </template>
+
+        <div class="absolute top-8 right-8 text-white/80 font-mono text-xl" x-text="time"></div>
+    </div>
+
+    <script>
+        document.addEventListener("alpine:init", () => {
+            Alpine.data("screensaver", () => ({
+                active: false,
+                params: {
+                    enabled: true,
+                    timeout: 5 * 60 * 1000,
+                    interval: 10000,
+                },
+                images: [],
+                currentIndex: 0,
+                timer: null,
+                slideshowInterval: null,
+                time: "",
+                clockInterval: null,
+
+                async init() {
+                    this.$watch('$store.ui.playerOpen', () => this.resetTimer());
+
+                    try {
+                        const res = await fetch(
+                            "/api/settings/screensaver_enabled",
+                        );
+                        if (res.ok) {
+                            const data = await res.json();
+
+                            this.params.enabled = data.value !== false;
+                        }
+                    } catch (e) {
+                        console.error(
+                            "Failed to load screensaver settings",
+                            e,
+                        );
+                    }
+
+                    this.resetTimer();
+
+                    [
+                        "mousemove",
+                        "mousedown",
+                        "keydown",
+                        "touchstart",
+                        "scroll",
+                    ].forEach((evt) => {
+                        window.addEventListener(
+                            evt,
+                            () => this.resetTimer(),
+                            { passive: true },
+                        );
+                    });
+
+                    this.updateTime();
+                    setInterval(() => this.updateTime(), 1000);
+                },
+
+                updateTime() {
+                    this.time = new Date().toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                    });
+                },
+
+                resetTimer() {
+                    this.active = false;
+                    clearTimeout(this.timer);
+                    clearInterval(this.slideshowInterval);
+
+                    if (this.params.enabled && !Alpine.store('ui').playerOpen) {
+                        this.timer = setTimeout(
+                            () => this.activate(),
+                            this.params.timeout,
+                        );
+                    }
+                },
+
+                async activate() {
+                    if (Alpine.store('ui').playerOpen) return;
+                    if (this.images.length === 0) {
+                        await this.fetchImages();
+                    }
+                    if (Alpine.store('ui').playerOpen) return;
+                    this.active = true;
+                    this.startSlideshow();
+                },
+
+                startSlideshow() {
+                    this.slideshowInterval = setInterval(() => {
+                        this.currentIndex =
+                            (this.currentIndex + 1) % this.images.length;
+                    }, this.params.interval);
+                },
+
+                async fetchImages() {
+                    try {
+                        const responses = await Promise.all([
+                            fetchWithAuth(
+                                "/api/catalogues/tmdb_trending_movies/items?page=1",
+                            ),
+                            fetchWithAuth(
+                                "/api/catalogues/tmdb_trending_tv/items?page=1",
+                            ),
+                        ]);
+
+                        const data = await Promise.all(
+                            responses.map((r) => r.json()),
+                        );
+
+                        const allItems = [
+                            ...(Array.isArray(data[0])
+                                ? data[0]
+                                : data[0].results || []),
+                            ...(Array.isArray(data[1])
+                                ? data[1]
+                                : data[1].results || []),
+                        ];
+
+                        if (allItems.length === 0) {
+                            console.warn(
+                                "Screensaver: No items found to display",
+                            );
+                            return;
+                        }
+
+                        const shuffled = allItems
+                            .sort(() => 0.5 - Math.random())
+                            .slice(0, 20);
+
+                        this.images = shuffled
+                            .map((item) => {
+
+                                const meta = item.metadata || item;
+                                const images = item.image_paths || {};
+
+                                const backdrop =
+                                    images.backdrop || meta.backdrop_path || item.backdrop_path || meta.backdrop_url;
+                                const poster =
+                                    images.poster || meta.poster_path || item.poster_path || meta.poster_url;
+                                const path = backdrop || poster;
+
+                                return {
+                                    url: window.getBackdropUrl(
+                                        path,
+                                        item.media_type,
+                                        item.id || item.tmdb_id,
+                                    ),
+                                    title: meta.title || meta.name || item.title || item.name,
+                                    year: (
+                                        meta.release_date ||
+                                        meta.first_air_date ||
+                                        item.release_date ||
+                                        ""
+                                    ).substring(0, 4),
+                                };
+                            })
+                            .filter((i) => i.url && i.url.length > 5);
+
+                        console.log(
+                            `Screensaver loaded ${this.images.length} images`,
+                        );
+                    } catch (e) {
+                        console.error("Screensaver fetch failed", e);
+                    }
+                },
+            }));
+        });
+    </script>
+</body>
+
+</html>

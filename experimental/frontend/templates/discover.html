@@ -1,0 +1,94 @@
+{% extends "base.html" %} {% block title %}Discover - JF-Resolve{% endblock %} {%
+block content %}
+
+<div x-data="discoverPage">
+
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 mt-6 gap-4 md:gap-6">
+        <h1 class="text-3xl font-bold tracking-tight">Discover</h1>
+
+        <div class="jfr-nav-surface jfr-filter-tabs w-full md:w-auto overflow-x-auto flex-nowrap gap-1 p-1">
+            <a class="tab tab-md flex-none whitespace-nowrap px-4 rounded-full"
+                :class="activeTab === 'popular_movies' ? 'tab-active' : ''"
+                @click="switchTab('popular_movies')">Popular Movies</a>
+
+            <a class="tab tab-md flex-none whitespace-nowrap px-4 rounded-full"
+                :class="activeTab === 'popular_tv' ? 'tab-active' : ''"
+                @click="switchTab('popular_tv')">Popular TV</a>
+
+            <a class="tab tab-md flex-none whitespace-nowrap px-4 rounded-full"
+                :class="activeTab === 'trending_movies' ? 'tab-active' : ''"
+                @click="switchTab('trending_movies')">Trending Movies</a>
+
+            <a class="tab tab-md flex-none whitespace-nowrap px-4 rounded-full"
+                :class="activeTab === 'trending_tv' ? 'tab-active' : ''"
+                @click="switchTab('trending_tv')">Trending TV</a>
+        </div>
+    </div>
+
+    <div
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4 lg:gap-6">
+        <template x-for="item in items" :key="item.uuid || item.tmdb_id">
+            <div class="jfr-poster-card group relative cursor-pointer"
+                @click="showDetail(item)">
+
+                <div class="aspect-[2/3] relative overflow-hidden bg-base-200">
+                    <img :src="getPosterUrl(item)" :alt="item.title" loading="lazy"
+                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        onerror="this.src='/static/images/default_poster.png'" />
+
+                    <div
+                        class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="badge badge-primary badge-xs font-black uppercase"
+                                x-text="item.media_type"></span>
+                            <span class="text-[10px] font-bold text-white/80" x-text="item.year"></span>
+                        </div>
+                        <div class="flex items-center gap-1 mb-1 text-warning text-[10px] font-bold"
+                            x-show="item.vote_average">
+                            <span>⭐</span>
+                            <span x-text="item.vote_average.toFixed(1)"></span>
+                        </div>
+                        <p class="text-[10px] text-white/60 line-clamp-2" x-text="item.overview"></p>
+                    </div>
+                </div>
+
+                <div class="jfr-poster-info p-3">
+                    <h3 class="text-xs font-black line-clamp-1 group-hover:text-primary transition-colors"
+                        x-text="item.title"></h3>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-[9px] font-bold uppercase tracking-widest opacity-40"
+                            x-text="item.year || 'Unknown'"></span>
+                        <div class="flex gap-1" x-show="item.content_rating">
+                            <span class="text-[9px] border border-white/20 px-1 rounded uppercase opacity-60"
+                                x-text="item.content_rating"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="loading">
+            <template x-for="i in 12">
+                <div class="bg-base-300 rounded-2xl overflow-hidden shadow-xl animate-pulse">
+                    <div class="aspect-[2/3] bg-white/5"></div>
+                    <div class="p-3 space-y-2">
+                        <div class="h-3 bg-white/10 rounded w-3/4"></div>
+                        <div class="h-2 bg-white/10 rounded w-1/2"></div>
+                    </div>
+                </div>
+            </template>
+        </template>
+    </div>
+
+    <div id="infinite-scroll-trigger" class="h-20 flex items-center justify-center mt-8">
+        <span x-show="loading && items.length > 0" class="loading loading-dots loading-lg opacity-50"></span>
+        <div x-show="!hasMore && !loading && items.length > 0"
+            class="text-sm opacity-30 font-bold uppercase tracking-widest">End of results</div>
+        <div x-show="!loading && items.length === 0" class="text-center opacity-50 py-12">
+            <p>No items found.</p>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/pages/discover.js"></script>
+{% endblock %}
