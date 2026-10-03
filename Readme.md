@@ -22,7 +22,7 @@ Prefer something that lives inside Jellyfin? Use the plugin instead: [jfresolve]
 - **Discover and search** movies and shows from TMDB.
 - **Web player** with a source picker, audio track and subtitle selection, and on-the-fly transcoding with FFmpeg when the browser can't play a file.
 - **Addon streams** from any Stremio addon manifest (Torrentio, AIOStreams, Comet, …). Results keep the addon's own ranking. Debrid services are configured in the addon, not here.
-- **Torrent playback** through a bundled TorrServer, with a P2P fallback for Torrentio.
+- **Torrent playback** through a bundled TorrServer, with a P2P fallback for Torrentio. Seeding is off unless you turn it on in Settings.
 - **Local library**: scan your own folders and play those files alongside addon streams.
 - **Jellyfin output**: writes `.strm` files for movies and every episode, and triggers a Jellyfin library scan.
 - **Requests**: in Jellyfin mode, users request titles and an admin approves them.
@@ -99,6 +99,10 @@ $env:PYTHONUTF8 = "1"
 python -m pip install -r requirements.txt
 python start.py
 ```
+
+### Upgrading from 1.x
+
+Old STRM files stop working after the upgrade. See [scripts/MIGRATING.md](scripts/MIGRATING.md) for the migration script.
 
 ## First run
 
