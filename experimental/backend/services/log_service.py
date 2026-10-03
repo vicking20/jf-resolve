@@ -6,7 +6,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List
 
-from ..config import settings
+from ..core.config import settings
 
 
 class LogService:

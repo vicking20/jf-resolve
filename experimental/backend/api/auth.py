@@ -61,7 +61,7 @@ async def register(
     await create_session_cookie(response, user, request)
 
     # Create setup completion flag file
-    from ..config import settings as app_settings
+    from ..core.config import settings as app_settings
 
     try:
         app_settings.SETUP_FLAG_FILE.touch(exist_ok=True)

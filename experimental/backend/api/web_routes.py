@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..addons.manager import plugin_manager
-from ..config import settings
+from ..core.config import settings
 from ..core.dependencies import get_admin_user_page, get_current_admin_user
 from ..core.session import get_current_user, get_current_user_optional
 from ..database import AsyncSessionLocal, get_db

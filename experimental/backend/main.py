@@ -34,7 +34,7 @@ from .api import (
     watchlist,
 )
 from .api import settings as settings_api
-from .config import settings
+from .core.config import settings
 from .core.dependencies import get_current_admin_user
 from .database import AsyncSessionLocal, engine, get_db, init_db
 from .models.user import User

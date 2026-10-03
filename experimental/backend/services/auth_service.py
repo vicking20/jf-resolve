@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import settings
+from ..core.config import settings
 from ..models.user import User
 
 # Password hashing - use argon2 for better compatibility

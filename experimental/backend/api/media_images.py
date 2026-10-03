@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from ..config import settings as app_settings
+from ..core.config import settings as app_settings
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response

@@ -15,7 +15,7 @@ from .interfaces import (
     UIExtension,
     UserContentSourceProvider,
 )
-from ..config import settings
+from ..core.config import settings
 
 
 def get_plugin_logger(plugin_id: str) -> logging.Logger:
