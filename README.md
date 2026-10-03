@@ -14,8 +14,10 @@ Browse movies and TV from TMDB and play them from Stremio addons, in the browser
 
 Prefer something that lives inside Jellyfin? Use the plugin instead: [jfresolve](https://github.com/vicking20/jfresolve).
 
-![Setup](images/jfresolvesetup.png)
-![Discover](images/discover.png)
+![Login](images/jfresolvesetup.png)
+![Home](images/home.webp)
+![Title page](images/title.webp)
+![Discover](images/discover.webp)
 
 ## Features
 
@@ -28,7 +30,7 @@ Prefer something that lives inside Jellyfin? Use the plugin instead: [jfresolve]
 - **Requests**: in Jellyfin mode, users request titles and an admin approves them.
 - **Users and parental controls**: per-user content rating limits apply to browsing and playback.
 - **Watchlist, progress and continue watching.**
-- **Subtitles**: embedded tracks, your own SRT/VTT files, and OpenSubtitles (or any Stremio subtitle addon) through the Stremio Subtitles plugin.
+- **Subtitles**: embedded tracks, your own SRT/VTT files, and OpenSubtitles through the Stremio Subtitles plugin.
 - **Plugins** installable from the built-in marketplace.
 
 ### Modes
@@ -113,8 +115,32 @@ Old STRM files stop working after the upgrade. See [scripts/MIGRATING.md](script
 1. Open `http://127.0.0.1:8765`.
 2. Create the admin account and choose a mode.
 3. Add your TMDB key.
-4. Paste your addon manifest URL into the Stream Manager plugin settings.
+4. In Settings → Plugins, configure Stream Manager with your addon manifest URL.
 5. For Jellyfin or Hybrid, fill in the Jellyfin URL, API key and STRM folders.
+
+## Plugins
+
+Streams, catalogues and subtitles come from plugins. Stream Manager and TMDB Core ship with the app; others install from the marketplace. The official repository is added by default.
+
+| Plugin | What it does |
+|---|---|
+| Stream Manager | Streams from a Stremio addon manifest URL |
+| The Movie Database (Core) | Popular, Trending and Top Rated catalogues |
+| Stremio Subtitles | Subtitles from OpenSubtitles or any Stremio subtitle addon. No API key needed. |
+
+To install a plugin, go to **Settings → Plugins → Plugin Marketplace** and click **Install**. Then click **Configure** on the plugin in Settings → Plugins to set it up, for example to paste your addon URL into Stream Manager.
+
+To add another repository, use **Add Plugin Repository** in the marketplace and paste the URL of its `master.json`.
+
+### Writing a plugin
+
+A plugin is a folder with:
+
+- `manifest.json`: `id`, `name`, `version`, `description`, `author`, `capabilities`
+- `plugin.py`: a `Plugin` class extending `BasePlugin` plus one or more of `SourceProvider`, `CatalogueProvider` or `SubtitleProvider` from `backend.addons.interfaces`
+- `config.html` (optional): form fields for its settings, saved to the plugin's `default_config` keys
+
+A repository is a `master.json` listing each plugin and the raw URLs of its files. See [jf-resolve-plugin-repo](https://github.com/vicking20/jf-resolve-plugin-repo) for working examples.
 
 ## Jellyfin output
 
