@@ -173,6 +173,16 @@
                         <input class="input input-bordered" x-model="settings.jellyfin_movie_path" placeholder="Movie directory" />
                         <input class="input input-bordered" x-model="settings.jellyfin_tv_path" placeholder="Series directory" />
                     </div>
+                    <label class="label">
+                        <span class="label-text">Versions per movie
+                            <span class="block text-xs opacity-60">Above 1, Jellyfin shows a version picker: Option 1 plays the addon's first stream, Option 2 the second, and so on.</span>
+                        </span>
+                        <input type="number" min="1" max="5" x-model.number="settings.strm_movie_versions" class="input input-bordered input-sm w-20" />
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <button type="button" class="btn btn-sm btn-outline" @click="rewriteMovieStrms()" :disabled="rewritingStrms">Rewrite movie STRM files</button>
+                        <span class="text-xs opacity-60">Save first. Applies the versions setting to movies already added.</span>
+                    </div>
                 </div>
 
                 <div class="card-actions justify-end mt-6">

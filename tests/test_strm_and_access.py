@@ -111,6 +111,30 @@ class StrmServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.service.remove("movie", "Heat: Redux", 1995))
         self.assertFalse((self.root / "movies" / "Heat Redux (1995)").exists())
 
+    async def test_movie_versions_become_jellyfin_options(self):
+        self.settings.values["strm_movie_versions"] = 3
+        result = await self.service.generate(949, "movie")
+        folder = self.root / "movies" / "Heat Redux (1995)"
+        self.assertEqual(result["created"], 3)
+        names = sorted(p.name for p in folder.glob("*.strm"))
+        self.assertEqual(names, [f"Heat Redux (1995) - Option {n}.strm" for n in (1, 2, 3)])
+        query = parse_qs(urlparse((folder / "Heat Redux (1995) - Option 2.strm").read_text()).query)
+        self.assertEqual(query["index"], ["1"])
+
+        self.settings.values["strm_movie_versions"] = 1
+        await self.service.generate(949, "movie")
+        self.assertEqual([p.name for p in folder.glob("*.strm")], ["Heat Redux (1995).strm"])
+        self.assertNotIn("index", parse_qs(urlparse((folder / "Heat Redux (1995).strm").read_text()).query))
+
+    async def test_rewrite_movies_applies_versions_to_existing_movies(self):
+        await self.service.generate(949, "movie")
+        (self.root / "movies" / "Mine (2001)").mkdir()
+        self.settings.values["strm_movie_versions"] = 2
+        result = await self.service.rewrite_movies()
+        self.assertEqual(result, {"rewritten": 1, "failed": []})
+        self.assertEqual(len(list((self.root / "movies" / "Heat Redux (1995)").glob("*.strm"))), 2)
+        self.assertEqual(list((self.root / "movies" / "Mine (2001)").iterdir()), [])
+
     async def test_missing_library_path_is_a_clear_error(self):
         self.settings.values.pop("jellyfin_movie_path")
         with self.assertRaisesRegex(ValueError, "jellyfin_movie_path"):

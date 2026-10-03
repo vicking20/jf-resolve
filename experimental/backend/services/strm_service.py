@@ -20,6 +20,7 @@ from .settings_manager import SettingsManager
 from .tmdb_service import TMDBService
 
 MARKER_FILE = ".jfresolve"
+MAX_VERSIONS = 5
 
 
 def sanitize_filename(name: str) -> str:
@@ -79,7 +80,7 @@ class StrmService:
         await self._write(folder / MARKER_FILE, "")
         await self._write(folder / ".metadata.json", json.dumps(data, indent=2))
 
-    async def generate(self, tmdb_id: int, media_type: str) -> Dict:
+    async def generate(self, tmdb_id: int, media_type: str, scan: bool = True) -> Dict:
         """Create (or top up) the STRM folder for a title.
 
         Existing episode files are left alone, so calling this again after a
@@ -108,9 +109,18 @@ class StrmService:
         created = 0
 
         if media_type == "movie":
-            strm_path = folder / f"{folder_name(title, year)}.strm"
-            await self._write(strm_path, await self._play_url("movie", tmdb_id))
-            created = 1
+            base = folder_name(title, year)
+            versions = max(1, min(MAX_VERSIONS, int(await self.settings.get("strm_movie_versions", 1) or 1)))
+            if versions == 1:
+                wanted = {folder / f"{base}.strm": None}
+            else:
+                wanted = {folder / f"{base} - Option {n}.strm": n - 1 for n in range(1, versions + 1)}
+            for old in folder.glob("*.strm"):
+                if old not in wanted:
+                    await asyncio.to_thread(old.unlink)
+            for strm_path, index in wanted.items():
+                await self._write(strm_path, await self._play_url("movie", tmdb_id, index=index))
+            created = len(wanted)
         else:
             for season in details.get("seasons", []):
                 season_num = season.get("season_number")
@@ -138,9 +148,27 @@ class StrmService:
             {"tmdb_id": tmdb_id, "imdb_id": imdb_id, "media_type": media_type, "title": title, "year": year},
         )
         log_service.info(f"STRM: wrote {created} file(s) for {media_type}:{tmdb_id} ({title}) in {folder}")
-        if created:
+        if created and scan:
             await self.trigger_jellyfin_scan()
         return {"folder": str(folder), "created": created}
+
+    async def rewrite_movies(self) -> Dict:
+        """Rewrite every movie folder JF-Resolve created, e.g. after changing versions."""
+        base = await self._base_path("movie")
+        rewritten, failed = 0, []
+        for metadata in sorted(base.glob("*/.metadata.json")):
+            folder = metadata.parent
+            if not (folder / MARKER_FILE).exists():
+                continue
+            try:
+                tmdb_id = int(json.loads(metadata.read_text())["tmdb_id"])
+                await self.generate(tmdb_id, "movie", scan=False)
+                rewritten += 1
+            except Exception as e:
+                failed.append(f"{folder.name}: {e}")
+        if rewritten:
+            await self.trigger_jellyfin_scan()
+        return {"rewritten": rewritten, "failed": failed}
 
     async def remove(self, media_type: str, title: str, year: Optional[int]) -> bool:
         """Delete a title's STRM folder, but only if JF-Resolve created it."""

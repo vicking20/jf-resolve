@@ -25,6 +25,7 @@ async def initialize_default_settings(db: AsyncSession):
         "jellyfin_api_key": "",
         "jellyfin_movie_path": "",
         "jellyfin_tv_path": "",
+        "strm_movie_versions": 1,
         "tmdb_api_key": "",
         "metadata_cache_days": 30,
         "quality_fallback_order": ["2160p", "1080p", "720p", "480p", "unknown"],

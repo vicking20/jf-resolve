@@ -20,6 +20,7 @@ function settingsPage() {
       jellyfin_api_key: "",
       jellyfin_movie_path: "",
       jellyfin_tv_path: "",
+      strm_movie_versions: 1,
       tmdb_api_key: "",
       metadata_cache_days: 30,
 
@@ -76,6 +77,7 @@ function settingsPage() {
     },
 
     requests: [],
+    rewritingStrms: false,
 
     async init() {
       await this.loadSettings();
@@ -83,6 +85,21 @@ function settingsPage() {
       await this.loadPlugins();
       await this.loadUsers();
       await this.loadScannerStatus();
+    },
+
+    async rewriteMovieStrms() {
+      this.rewritingStrms = true;
+      try {
+        const response = await fetch("/api/strm/rewrite-movies", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Rewrite failed");
+        const failed = data.failed.length ? `, ${data.failed.length} failed` : "";
+        this.showToast(`Rewrote ${data.rewritten} movies${failed}`, data.failed.length ? "error" : "success");
+      } catch (error) {
+        this.showToast(error.message, "error");
+      } finally {
+        this.rewritingStrms = false;
+      }
     },
 
     async loadRequests() {

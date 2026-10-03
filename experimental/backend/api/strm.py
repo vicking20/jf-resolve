@@ -12,10 +12,12 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..addons.manager import plugin_manager
+from ..core.dependencies import get_current_admin_user
 from ..database import get_db
 from ..services.log_service import log_service
 from ..services.settings_manager import SettingsManager
-from ..services.strm_service import get_strm_token
+from ..models.user import User
+from ..services.strm_service import StrmService, get_strm_token
 from ..services.tmdb_service import TMDBService
 
 router = APIRouter(prefix="/api/strm", tags=["strm"])
@@ -78,3 +80,21 @@ async def play(
 
     log_service.info(f"STRM: {label} index={index} -> {url[:100]}")
     return RedirectResponse(url, status_code=302)
+
+
+@router.post("/rewrite-movies")
+async def rewrite_movies(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_user),
+):
+    """Apply the current STRM settings (such as versions per movie) to existing movies."""
+    settings = SettingsManager(db)
+    if not await settings.get("strm_generation_enabled", False):
+        raise HTTPException(status_code=409, detail="STRM output is disabled")
+    tmdb = TMDBService(await settings.get("tmdb_api_key") or "")
+    try:
+        return await StrmService(settings, tmdb).rewrite_movies()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        await tmdb.close()
