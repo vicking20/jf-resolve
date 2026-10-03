@@ -3,10 +3,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..addons.manager import plugin_manager
 from ..core.session import get_current_user
 from ..database import get_db
 from ..models.media_external_id import MediaExternalId
 from ..models.user import User
+from ..services import external_subtitles
 from ..services.access_control import ensure_item_allowed
 from ..services.media_resolver import MediaResolver
 from ..services.settings_manager import SettingsManager
@@ -111,3 +113,38 @@ async def get_media_sources(
     return sources
 
 
+
+
+@router.get("/{identifier}/subtitles")
+async def get_media_subtitles(
+    identifier: str,
+    media_type: Optional[str] = Query(None),
+    season: Optional[int] = None,
+    episode: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    resolver: MediaResolver = Depends(get_media_resolver),
+):
+    """External subtitles from subtitle plugins, as signed download tokens."""
+    item = await resolver.resolve(db, identifier, media_type)
+    if not item:
+        raise HTTPException(status_code=404, detail="Media item not found")
+    await ensure_item_allowed(db, current_user, item)
+
+    imdb_id = item.get("imdb_id")
+    if not imdb_id and item.get("tmdb_id"):
+        imdb_id = await resolver.tmdb.get_imdb_id(int(item["tmdb_id"]), item["media_type"])
+    if not imdb_id or item["media_type"] not in ("movie", "tv"):
+        return []
+
+    subtitles = await plugin_manager.get_all_subtitles(imdb_id, item["media_type"], season, episode)
+    return [
+        {
+            "token": external_subtitles.sign(sub["url"]),
+            "language": sub.get("language") or "und",
+            "label": sub.get("label"),
+            "provider": sub.get("provider"),
+        }
+        for sub in subtitles
+        if sub.get("url")
+    ]

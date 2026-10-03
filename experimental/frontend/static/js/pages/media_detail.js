@@ -58,6 +58,7 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
     sourceMenuOpen: false,
     audioMenuOpen: false,
     subtitleTracks: [],
+    externalSubtitles: [],
     selectedSubtitle: 'off',
     subtitleLoading: false,
     subtitleTimer: null,
@@ -571,6 +572,8 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
         episode: this.selectedEpisode,
       };
       this.subtitleTracks = [];
+      this.externalSubtitles = [];
+      this.loadExternalSubtitles(requestId);
       clearInterval(this.subtitleTimer);
       this.subtitleTimer = null;
       this.selectedSubtitle = 'off';
@@ -773,6 +776,20 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
       await this.playSourceByIndex(this.allSources.length - 1);
     },
 
+    async loadExternalSubtitles(requestId) {
+      if (!(this.media?.uuid || this.media?.tmdb_id) || !['movie', 'tv'].includes(this.media.media_type)) return;
+      const params = new URLSearchParams({ media_type: this.media.media_type });
+      if (this.selectedSeason != null) params.set('season', this.selectedSeason);
+      if (this.selectedEpisode != null) params.set('episode', this.selectedEpisode);
+      const identifier = this.media.uuid || `tmdb:${this.media.tmdb_id}`;
+      try {
+        const response = await fetch(`/api/media/${identifier}/subtitles?${params}`);
+        if (!response.ok || requestId !== this._playRequestId) return;
+        const subtitles = await response.json();
+        if (requestId === this._playRequestId) this.externalSubtitles = subtitles;
+      } catch (error) {}
+    },
+
     async selectSubtitle(value) {
       clearInterval(this.subtitleTimer);
       this.subtitleTimer = null;
@@ -781,6 +798,27 @@ function mediaDetailPage(serverMedia = null, isVirtual = false) {
       if (!player) return;
       if (value === 'off') {
         await player.setSubtitleText(null);
+        return;
+      }
+      if (value.startsWith('ext:')) {
+        const subtitle = this.externalSubtitles[Number(value.slice(4))];
+        this.subtitleLoading = true;
+        try {
+          const response = await fetch(`/api/stream/external-subtitle?token=${encodeURIComponent(subtitle.token)}`);
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Unable to load subtitles');
+          }
+          const text = await response.text();
+          if (this.videoPlayer === player && this.selectedSubtitle === value) await player.setSubtitleText(text);
+        } catch (error) {
+          if (this.videoPlayer === player) {
+            this.selectedSubtitle = 'off';
+            Alpine.store('notifications')?.error(error.message);
+          }
+        } finally {
+          if (this.videoPlayer === player) this.subtitleLoading = false;
+        }
         return;
       }
       if (player.streamId) {

@@ -143,6 +143,27 @@ class SourceProvider(ABC):
         pass
 
 
+class Subtitle(BaseModel):
+    url: str
+    language: str
+    label: Optional[str] = None
+
+
+class SubtitleProvider(ABC):
+    """Interface for plugins that provide external subtitle files for TMDB content"""
+
+    @abstractmethod
+    async def get_subtitles(
+        self,
+        imdb_id: str,
+        media_type: str,
+        season: Optional[int] = None,
+        episode: Optional[int] = None,
+    ) -> List[Subtitle]:
+        """Return SRT or VTT subtitle files for a movie or episode"""
+        pass
+
+
 class UserContentSourceProvider(ABC):
     """
     Interface for plugins that provide streams for user content (Video/VideoSeries).

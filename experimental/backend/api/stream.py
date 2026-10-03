@@ -4,13 +4,14 @@ import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.session import get_current_user
 from ..database import get_db
 from ..models.media import MediaSourceModel
 from ..models.user import User
+from ..services import external_subtitles
 from ..services.access_control import ensure_item_allowed, ensure_media_uuid_allowed
 from ..services.ffprobe_service import FFprobeService
 from ..services.log_service import log_service
@@ -522,3 +523,13 @@ async def heartbeat_transcode(stream_id: str, current_user: User = Depends(get_c
     if not transcode_manager.touch_stream(stream_id):
         raise HTTPException(status_code=404, detail="Playback session has ended")
     return {"status": "alive"}
+
+
+@router.get("/external-subtitle")
+async def get_external_subtitle(
+    token: str = Query(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Download a plugin-provided subtitle file for the browser player."""
+    text = await external_subtitles.fetch(token, current_user)
+    return PlainTextResponse(text, headers={"Cache-Control": "private, max-age=3600"})

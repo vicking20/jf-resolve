@@ -28,6 +28,7 @@ Prefer something that lives inside Jellyfin? Use the plugin instead: [jfresolve]
 - **Requests**: in Jellyfin mode, users request titles and an admin approves them.
 - **Users and parental controls**: per-user content rating limits apply to browsing and playback.
 - **Watchlist, progress and continue watching.**
+- **Subtitles**: embedded tracks, your own SRT/VTT files, and OpenSubtitles (or any Stremio subtitle addon) through the Stremio Subtitles plugin.
 - **Plugins** installable from the built-in marketplace.
 
 ### Modes

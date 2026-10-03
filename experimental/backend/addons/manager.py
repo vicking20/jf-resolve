@@ -12,6 +12,7 @@ from .interfaces import (
     BasePlugin,
     CatalogueProvider,
     SourceProvider,
+    SubtitleProvider,
     UIExtension,
     UserContentSourceProvider,
 )
@@ -66,7 +67,7 @@ class SafePluginWrapper:
                         f"Plugin '{self._plugin_name}' error in {name}(): {e}",
                         exc_info=True,
                     )
-                    if name in ["get_catalogues", "get_items", "get_streams"]:
+                    if name in ["get_catalogues", "get_items", "get_streams", "get_subtitles"]:
                         return []
                     elif name in ["get_ui_extensions"]:
                         return {}
@@ -105,6 +106,7 @@ class PluginManager:
         self.source_providers: List[
             SourceProvider
         ] = []
+        self.subtitle_providers: List[SubtitleProvider] = []
         self.user_content_providers: List[
             UserContentSourceProvider
         ] = []
@@ -192,6 +194,8 @@ class PluginManager:
             self.catalogue_providers.append(safe_plugin)
         if isinstance(plugin_instance, SourceProvider):
             self.source_providers.append(safe_plugin)
+        if isinstance(plugin_instance, SubtitleProvider):
+            self.subtitle_providers.append(safe_plugin)
         if isinstance(plugin_instance, UserContentSourceProvider):
             self.user_content_providers.append(safe_plugin)
         if isinstance(plugin_instance, UIExtension):
@@ -229,6 +233,17 @@ class PluginManager:
                     s if isinstance(s, dict) else s.model_dump() for s in streams
                 ]
         return all_streams
+
+    async def get_all_subtitles(
+        self, imdb_id: str, media_type: str, season: int = None, episode: int = None
+    ) -> List[dict]:
+        """Get external subtitles from all subtitle providers"""
+        subtitles = []
+        for provider in self.subtitle_providers:
+            for sub in await provider.get_subtitles(imdb_id, media_type, season, episode) or []:
+                sub = sub if isinstance(sub, dict) else sub.model_dump()
+                subtitles.append({**sub, "provider": provider.manifest.get("name") or provider.manifest.get("id")})
+        return subtitles
 
     async def get_streams_for_video(
         self,
@@ -296,6 +311,9 @@ class PluginManager:
             ]
             self.source_providers = [
                 p for p in self.source_providers if p.manifest.id != plugin_id
+            ]
+            self.subtitle_providers = [
+                p for p in self.subtitle_providers if p.manifest.id != plugin_id
             ]
             self.user_content_providers = [
                 p for p in self.user_content_providers if p.manifest.id != plugin_id

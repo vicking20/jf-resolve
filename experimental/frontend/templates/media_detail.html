@@ -581,6 +581,9 @@ else %}Loading...{% endif %} - JF-Resolve{% endblock %}
                                 <option :value="String(track.index)" :disabled="!track.supported"
                                     x-text="`${track.language}${track.title ? ' · ' + track.title : ''}${track.supported ? '' : ' (image subtitles unavailable)'}`"></option>
                             </template>
+                            <template x-for="(sub, i) in externalSubtitles" :key="sub.token">
+                                <option :value="`ext:${i}`" x-text="`${sub.language}${sub.label ? ' · ' + sub.label : ''} (${sub.provider})`"></option>
+                            </template>
                             <option value="file" x-show="selectedSubtitle === 'file'">Local file</option>
                         </select>
                         <label class="btn btn-sm btn-ghost text-white">
